@@ -1,0 +1,22 @@
+# Geheimen -- nooit committen
+gcp_key.json
+*-key.json
+.env
+.env.local
+
+# Gegenereerde verhalen (staan op het Coolify-volume)
+data/
+output/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
