@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Voorlees Ninja">
+  <defs>
+    <linearGradient id="lucht" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#201b4a"/>
+      <stop offset="1" stop-color="#090811"/>
+    </linearGradient>
+    <radialGradient id="gloed" cx="72%" cy="24%" r="55%">
+      <stop offset="0" stop-color="#3a2d69" stop-opacity=".9"/>
+      <stop offset="1" stop-color="#3a2d69" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="maan" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffecc3"/>
+      <stop offset="1" stop-color="#e09b4a"/>
+    </linearGradient>
+    <mask id="sikkel">
+      <rect width="512" height="512" fill="#000"/>
+      <circle cx="287" cy="256" r="154" fill="#fff"/>
+      <circle cx="215" cy="205" r="138" fill="#000"/>
+    </mask>
+  </defs>
+  <rect width="512" height="512" fill="url(#lucht)"/>
+  <rect width="512" height="512" fill="url(#gloed)"/>
+  <g fill="#fff5e2">
+    <circle cx="82" cy="102" r="7"/>
+    <circle cx="154" cy="61" r="5"/>
+    <circle cx="425" cy="92" r="6"/>
+    <circle cx="102" cy="379" r="6"/>
+    <circle cx="369" cy="410" r="7"/>
+    <circle cx="61" cy="256" r="4"/>
+    <circle cx="450" cy="297" r="5"/>
+    <circle cx="225" cy="440" r="5"/>
+  </g>
+  <rect width="512" height="512" fill="url(#maan)" mask="url(#sikkel)"/>
+</svg>

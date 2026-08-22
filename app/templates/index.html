@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Voorlees Ninja</title>
+  <meta name="description" content="Elke avond een nieuw bedtijdverhaaltje, met tekeningen en een voorleesstem.">
+  <meta name="theme-color" content="#0a0912">
+  <meta name="color-scheme" content="dark">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Voorlees Ninja">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/static/icoon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/icoon-192.png">
+  <link rel="stylesheet" href="/static/styles.css?v={{ versie }}">
+</head>
+<body data-pin-vereist="{{ 'ja' if pin_vereist else 'nee' }}"
+      data-ingelogd="{{ 'ja' if ingelogd else 'nee' }}">
+
+<noscript>
+  <div style="max-width:32em;margin:22vh auto;text-align:center;padding:24px">
+    <div style="font-size:3rem">🌙</div>
+    <h1>Voorlees Ninja</h1>
+    <p>Deze app heeft JavaScript nodig om verhaaltjes te maken en voor te lezen.</p>
+  </div>
+</noscript>
+
+<div class="hemel"></div>
+<div class="sterren" id="sterren" aria-hidden="true"></div>
+
+<!-- ============ Pincodescherm ============ -->
+<section class="slot verborgen" id="scherm-slot">
+  <div class="maantje">🌙</div>
+  <h1>Voorlees Ninja</h1>
+  <p>Voer de pincode in om verhaaltjes te maken en te lezen.</p>
+  <form id="pin-formulier" autocomplete="off">
+    <input class="pinveld" id="pin-invoer" type="password" inputmode="numeric"
+           autocomplete="current-password" placeholder="••••" aria-label="Pincode">
+    <button class="knop knop-hoofd knop-vol" style="margin-top:16px" type="submit">Naar binnen</button>
+  </form>
+</section>
+
+<!-- ============ Startscherm ============ -->
+<main class="omhulsel verborgen" id="scherm-start">
+  <header class="kop">
+    <div class="kop-merk">
+      <div class="maantje">🌙</div>
+      <div>
+        <h1>Voorlees Ninja</h1>
+        <div class="ondertitel" id="welkomstregel">Welk avontuur wordt het vanavond?</div>
+      </div>
+    </div>
+    <button class="knop knop-rond" id="knop-instellingen" title="Instellingen" aria-label="Instellingen">⚙️</button>
+  </header>
+
+  <section class="kaart maak-kaart">
+    <h2>Maak een nieuw verhaaltje</h2>
+    <p class="uitleg">Typ een idee, of tik op een van de suggesties hieronder.</p>
+
+    <textarea class="veld" id="idee-veld" maxlength="500" rows="3"
+              placeholder="Bijvoorbeeld: Leo helpt een verdwaald eendje terug naar de Maas…"></textarea>
+
+    <div class="tegels" id="suggesties"></div>
+
+    <div class="instel-rij">
+      <div>
+        <div class="label-klein">Lengte</div>
+        <div class="keuzegroep" id="lengte-keuze" role="group" aria-label="Lengte van het verhaal">
+          <button type="button" data-scenes="3" aria-pressed="false">Kort</button>
+          <button type="button" data-scenes="4" aria-pressed="true">Gewoon</button>
+          <button type="button" data-scenes="6" aria-pressed="false">Lang</button>
+        </div>
+      </div>
+      <button class="knop knop-stil" id="knop-verras" type="button">🎲 Verras me</button>
+    </div>
+
+    <button class="knop knop-hoofd knop-vol" id="knop-maak" type="button">✨ Maak het verhaaltje</button>
+  </section>
+
+  <section>
+    <div class="sectie-kop">
+      <h2>📚 De boekenplank</h2>
+      <span class="telling" id="plank-telling"></span>
+    </div>
+    <div class="plank" id="plank"></div>
+    <div class="leeg verborgen" id="plank-leeg">
+      Nog geen verhaaltjes. Maak het eerste boekje hierboven! 🌟
+    </div>
+  </section>
+</main>
+
+<!-- ============ Wachtscherm ============ -->
+<section class="wachtscherm verborgen" id="scherm-wachten" aria-live="polite">
+  <div class="slaper" id="wacht-emoji">🌙</div>
+  <div class="stap" id="wacht-stap">Het verhaaltje wordt bedacht…</div>
+  <div class="balk"><span id="wacht-balk"></span></div>
+  <div class="tip" id="wacht-tip"></div>
+  <button class="knop knop-stil" id="knop-wacht-verberg" type="button">Op de achtergrond zetten</button>
+</section>
+
+<!-- ============ Lezer ============ -->
+<section class="lezer verborgen" id="scherm-lezer">
+  <div class="lezer-kop">
+    <button class="knop knop-rond" id="knop-sluit-lezer" aria-label="Terug naar de boekenplank">✕</button>
+    <div class="boektitel" id="lezer-titel"></div>
+    <button class="knop knop-rond" id="knop-lezer-menu" aria-label="Opties voor dit verhaal">⋯</button>
+  </div>
+
+  <div class="pagina" id="pagina">
+    <div class="prent"><img id="lezer-prent" alt="" draggable="false"></div>
+    <p class="verhaaltekst" id="lezer-tekst"></p>
+    <div class="stippen" id="lezer-stippen"></div>
+  </div>
+
+  <div class="lezer-voet">
+    <button class="knop bladerknop" id="knop-vorige" aria-label="Vorige bladzijde">←</button>
+    <button class="knop speelknop" id="knop-speel" aria-label="Voorlezen starten">▶</button>
+    <button class="knop bladerknop" id="knop-volgende" aria-label="Volgende bladzijde">→</button>
+  </div>
+</section>
+
+<div class="dimmer" id="dimmer"></div>
+<div class="melding" id="melding" role="status" aria-live="polite"></div>
+
+<!-- ============ Paneel: instellingen ============ -->
+<div class="paneel-achtergrond verborgen" id="paneel-instellingen">
+  <div class="paneel" role="dialog" aria-label="Instellingen">
+    <div class="greep"></div>
+    <h2>⚙️ Instellingen</h2>
+
+    <div class="formulier-rij duo">
+      <div>
+        <label for="in-naam">Naam van het kind</label>
+        <input type="text" id="in-naam" maxlength="30">
+      </div>
+      <div>
+        <label for="in-leeftijd">Leeftijd</label>
+        <input type="number" id="in-leeftijd" min="1" max="12">
+      </div>
+    </div>
+
+    <div class="formulier-rij">
+      <label for="in-plaats">Woonplaats</label>
+      <input type="text" id="in-plaats" maxlength="40">
+      <div class="hint">Wordt gebruikt voor herkenbare plekjes in het verhaal.</div>
+    </div>
+
+    <div class="formulier-rij">
+      <label for="in-favorieten">Waar houdt het kind van?</label>
+      <input type="text" id="in-favorieten" maxlength="120" placeholder="trams, kranen, boten…">
+    </div>
+
+    <div class="formulier-rij">
+      <label for="in-uiterlijk">Hoe ziet het hoofdpersoon eruit? (Engels)</label>
+      <textarea id="in-uiterlijk" maxlength="400"></textarea>
+      <div class="hint">Deze beschrijving gaat naar het tekenmodel, zodat het figuurtje er elke keer hetzelfde uitziet.</div>
+    </div>
+
+    <div class="formulier-rij">
+      <label for="in-stem">Voorleesstem</label>
+      <select id="in-stem"></select>
+    </div>
+
+    <div class="formulier-rij">
+      <label for="in-tempo">Voorleestempo — <span id="tempo-waarde">0.9×</span></label>
+      <input type="range" id="in-tempo" min="0.7" max="1.15" step="0.05">
+    </div>
+
+    <div class="formulier-rij">
+      <label for="in-dimmer">Schermdimmer voor het donker — <span id="dimmer-waarde">0%</span></label>
+      <input type="range" id="in-dimmer" min="0" max="70" step="5">
+    </div>
+
+    <div class="formulier-rij">
+      <label for="in-autoblader">Automatisch omslaan tijdens voorlezen</label>
+      <div class="keuzegroep" id="in-autoblader" role="group">
+        <button type="button" data-auto="ja" aria-pressed="true">Aan</button>
+        <button type="button" data-auto="nee" aria-pressed="false">Uit</button>
+      </div>
+    </div>
+
+    <button class="knop knop-hoofd knop-vol" id="knop-bewaar-instellingen" type="button">Bewaren</button>
+    <button class="knop knop-vol knop-stil" style="margin-top:8px" id="knop-sluit-instellingen" type="button">Sluiten</button>
+    <button class="knop knop-vol knop-stil verborgen" style="margin-top:4px" id="knop-uitloggen" type="button">Uitloggen</button>
+  </div>
+</div>
+
+<!-- ============ Paneel: verhaalopties ============ -->
+<div class="paneel-achtergrond verborgen" id="paneel-verhaal">
+  <div class="paneel" role="dialog" aria-label="Opties voor dit verhaal">
+    <div class="greep"></div>
+    <h2 id="verhaal-opties-titel">Dit verhaaltje</h2>
+    <button class="knop knop-vol" style="margin-bottom:8px" id="knop-favoriet" type="button">⭐ Favoriet maken</button>
+    <button class="knop knop-vol" style="margin-bottom:8px" id="knop-offline" type="button">📥 Bewaar offline</button>
+    <button class="knop knop-vol" style="margin-bottom:8px" id="knop-tekstgrootte" type="button">🔠 Grotere letters</button>
+    <button class="knop knop-vol knop-gevaar" style="margin-bottom:8px" id="knop-verwijder" type="button">🗑️ Verwijderen</button>
+    <button class="knop knop-vol knop-stil" id="knop-sluit-verhaal" type="button">Sluiten</button>
+  </div>
+</div>
+
+<audio id="speler" preload="auto"></audio>
+<script src="/static/app.js?v={{ versie }}"></script>
+</body>
+</html>
