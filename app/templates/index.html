@@ -115,9 +115,15 @@
   </div>
 
   <div class="lezer-voet">
-    <button class="knop bladerknop" id="knop-vorige" aria-label="Vorige bladzijde">←</button>
+    <div class="voet-zij">
+      <button class="knop bladerknop" id="knop-vorige" aria-label="Vorige bladzijde">←</button>
+      <button class="knop herhaalknop" id="knop-herhaal"
+              aria-label="Deze bladzijde nog een keer voorlezen" title="Nog een keer">↻</button>
+    </div>
     <button class="knop speelknop" id="knop-speel" aria-label="Voorlezen starten">▶</button>
-    <button class="knop bladerknop" id="knop-volgende" aria-label="Volgende bladzijde">→</button>
+    <div class="voet-zij rechts">
+      <button class="knop bladerknop" id="knop-volgende" aria-label="Volgende bladzijde">→</button>
+    </div>
   </div>
 </section>
 
@@ -192,6 +198,7 @@
   <div class="paneel" role="dialog" aria-label="Opties voor dit verhaal">
     <div class="greep"></div>
     <h2 id="verhaal-opties-titel">Dit verhaaltje</h2>
+    <button class="knop knop-vol" style="margin-bottom:8px" id="knop-opnieuw" type="button">🔄 Vanaf het begin voorlezen</button>
     <button class="knop knop-vol" style="margin-bottom:8px" id="knop-favoriet" type="button">⭐ Favoriet maken</button>
     <button class="knop knop-vol" style="margin-bottom:8px" id="knop-offline" type="button">📥 Bewaar offline</button>
     <button class="knop knop-vol" style="margin-bottom:8px" id="knop-tekstgrootte" type="button">🔠 Grotere letters</button>

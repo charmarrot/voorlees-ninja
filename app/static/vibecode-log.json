@@ -1,0 +1,17 @@
+{
+  "schema": "vibecode-log/1",
+  "project": "Voorlees Ninja",
+  "domein": "voorlees.ninjageit.nl",
+  "omschrijving": "Webapp die met Gemini en Cloud Text-to-Speech elke avond een nieuw bedtijdverhaaltje schrijft, tekent en voorleest.",
+  "bijgewerkt": "2026-08-22T19:04:51+00:00",
+  "aantal": 1,
+  "entries": [
+    {
+      "datum": "2026-08-22",
+      "titel": "Voorlees Ninja: interactieve PWA voor bedtijdverhaaltjes",
+      "commit": "6a65239",
+      "bestanden": 22,
+      "regels": 3124
+    }
+  ]
+}

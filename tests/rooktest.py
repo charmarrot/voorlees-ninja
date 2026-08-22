@@ -28,6 +28,16 @@ for pad in ("/api/verhalen", "/api/profiel", "/media/abc/scene_1.png"):
 assert c.post("/api/genereer", json={"prompt": "test"}).status_code == 401
 print("✓ pincode beschermt api en media")
 
+# 2b. Het vibecode-log moet juist WEL zonder pincode bereikbaar zijn
+log = c.get("/vibecode-log.json")
+assert log.status_code == 200, log.status_code
+assert log.json()["schema"] == "vibecode-log/1"
+assert log.headers["content-type"].startswith("application/json")
+tekst = log.text.lower()
+for verboden in ("claude.ai/code/session", "private_key", "gcp_sa_json", "-----begin"):
+    assert verboden not in tekst, f"gevoelige tekst in het logboek: {verboden}"
+print("✓ vibecode-log publiek, zonder pincode en zonder geheimen")
+
 # 3. Verkeerde pin faalt, juiste pin geeft cookie
 assert c.post("/api/login", data={"pincode": "0000"}).status_code == 401
 assert c.post("/api/login", data={"pincode": "4321"}).status_code == 200

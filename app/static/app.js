@@ -409,32 +409,61 @@
     if (e.key === 'ArrowLeft') { stopVoorlezen(); naarBladzijde(staat.bladzijde - 1); }
     if (e.key === 'Escape') sluitLezer();
     if (e.key === ' ') { e.preventDefault(); wisselVoorlezen(); }
+    if (e.key === 'r' || e.key === 'R') herhaalBladzijde();
   });
 
   /* ---------------- Voorlezen ---------------- */
   const speler = $('speler');
 
   $('knop-speel').addEventListener('click', wisselVoorlezen);
+  $('knop-herhaal').addEventListener('click', herhaalBladzijde);
+
+  /* "Lees hem nog een keer voor": begint deze bladzijde opnieuw, zonder om te
+     slaan. Werkt ook als de verteller al bezig is. */
+  function herhaalBladzijde() {
+    if (!staat.verhaal) return;
+    const knop = $('knop-herhaal');
+    knop.classList.remove('draait');
+    void knop.offsetWidth;  // herstart de animatie
+    knop.classList.add('draait');
+    stopVoorlezen();
+    startVoorlezen({ alleenDezeBladzijde: true });
+  }
+
+  function leesVanafBegin() {
+    if (!staat.verhaal) return;
+    stopVoorlezen();
+    naarBladzijde(0);
+    startVoorlezen();
+  }
 
   function wisselVoorlezen() {
     if (staat.speelt) stopVoorlezen(); else startVoorlezen();
   }
 
-  function startVoorlezen() {
+  function startVoorlezen({ alleenDezeBladzijde = false } = {}) {
     const verhaal = staat.verhaal;
     if (!verhaal) return;
     const map = `/media/${verhaal.id}`;
     staat.programma = [];
-    if (staat.bladzijde === 0 && verhaal.titel_audio) {
-      staat.programma.push({ url: `${map}/${verhaal.titel_audio}`, bladzijde: 0 });
-    }
-    for (let i = staat.bladzijde; i < verhaal.scenes.length; i++) {
-      const scene = verhaal.scenes[i];
-      if (scene.audio) staat.programma.push({ url: `${map}/${scene.audio}`, bladzijde: i });
-      if (!staat.autoblader) break;
-    }
-    if (staat.autoblader && verhaal.slot_audio) {
-      staat.programma.push({ url: `${map}/${verhaal.slot_audio}`, bladzijde: null });
+
+    if (alleenDezeBladzijde) {
+      const scene = verhaal.scenes[staat.bladzijde];
+      if (scene && scene.audio) {
+        staat.programma.push({ url: `${map}/${scene.audio}`, bladzijde: staat.bladzijde });
+      }
+    } else {
+      if (staat.bladzijde === 0 && verhaal.titel_audio) {
+        staat.programma.push({ url: `${map}/${verhaal.titel_audio}`, bladzijde: 0 });
+      }
+      for (let i = staat.bladzijde; i < verhaal.scenes.length; i++) {
+        const scene = verhaal.scenes[i];
+        if (scene.audio) staat.programma.push({ url: `${map}/${scene.audio}`, bladzijde: i });
+        if (!staat.autoblader) break;
+      }
+      if (staat.autoblader && verhaal.slot_audio) {
+        staat.programma.push({ url: `${map}/${verhaal.slot_audio}`, bladzijde: null });
+      }
     }
     if (!staat.programma.length) { meld('Bij dit verhaaltje zit geen geluid.', 'fout'); return; }
 
@@ -510,6 +539,11 @@
     toon('paneel-verhaal');
   });
   $('knop-sluit-verhaal').addEventListener('click', () => verberg('paneel-verhaal'));
+
+  $('knop-opnieuw').addEventListener('click', () => {
+    verberg('paneel-verhaal');
+    leesVanafBegin();
+  });
 
   $('knop-favoriet').addEventListener('click', async () => {
     if (!staat.verhaal) return;
