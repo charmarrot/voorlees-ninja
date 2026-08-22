@@ -54,8 +54,11 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(verzoek)
         .then((antwoord) => {
-          const kopie = antwoord.clone();
-          caches.open(SCHIL).then((bak) => bak.put('/', kopie)).catch(() => {});
+          // Alleen de echte startpagina mag de bewaarde app-schil vervangen.
+          if (url.pathname === '/' && antwoord.ok) {
+            const kopie = antwoord.clone();
+            caches.open(SCHIL).then((bak) => bak.put('/', kopie)).catch(() => {});
+          }
           return antwoord;
         })
         .catch(() => caches.match('/').then((bewaard) => bewaard || nietBeschikbaar()))

@@ -160,6 +160,24 @@ async def manifest():
   )
 
 
+@app.get("/vibecode-log.json", include_in_schema=False)
+async def vibecode_log():
+  """Publiek bouwlogboek voor de wekelijkse vibecode-review.
+
+  Bewust buiten de pincode om: Cowork haalt dit bestand zonder inloggen op.
+  Het bevat alleen commit-onderwerpregels -- nooit verhaalinhoud of iets uit
+  de datamap.
+  """
+  pad = config.STATIC_DIR / "vibecode-log.json"
+  if not pad.is_file():
+    raise HTTPException(status_code=404, detail="Nog geen logboek gegenereerd")
+  return FileResponse(
+      pad,
+      media_type="application/json",
+      headers={"Cache-Control": "public, max-age=300"},
+  )
+
+
 @app.get("/healthz", include_in_schema=False)
 async def healthz():
   return {"status": "ok", "verhalen": len(story.bibliotheek())}
