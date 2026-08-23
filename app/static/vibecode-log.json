@@ -3,9 +3,16 @@
   "project": "Voorlees Ninja",
   "domein": "voorlees.ninjageit.nl",
   "omschrijving": "Webapp die met Gemini en Cloud Text-to-Speech elke avond een nieuw bedtijdverhaaltje schrijft, tekent en voorleest.",
-  "bijgewerkt": "2026-08-23T20:15:20+00:00",
-  "aantal": 3,
+  "bijgewerkt": "2026-08-23T20:29:33+00:00",
+  "aantal": 4,
   "entries": [
+    {
+      "datum": "2026-08-23",
+      "titel": "Slaapliedje bij een verhaal, en herhaalknop start het hele verhaal",
+      "commit": "89a1d6f",
+      "bestanden": 8,
+      "regels": 323
+    },
     {
       "datum": "2026-08-23",
       "titel": "Suggestietegels laten verzinnen door Gemini",
