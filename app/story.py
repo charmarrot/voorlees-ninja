@@ -167,6 +167,97 @@ def genereer_tekst(idee: str, profiel: dict, aantal_scenes: int) -> dict:
   }
 
 
+# --- Slaapliedje ------------------------------------------------------------
+def genereer_liedje(verhaal: dict, profiel: dict) -> dict:
+  """Schrijft een slaapliedje bij een bestaand verhaal.
+
+  De uitvoer is bedoeld om rechtstreeks in Suno (of Gemini met muziek) te
+  plakken: Nederlandse songtekst met blokhaken, en een losse stijlregel in
+  het Engels, want daar reageren die modellen beter op.
+  """
+  from google.genai import types
+
+  naam = profiel.get("naam", "Leo")
+  leeftijd = profiel.get("leeftijd", 3)
+  verhaaltje = " ".join(scene["tekst"] for scene in verhaal.get("scenes", []))
+
+  systeem = f"""
+Je schrijft slaapliedjes voor {naam}, een kind van {leeftijd} jaar. Je krijgt
+een bedtijdverhaal en maakt daar een liedje van dat je vlak voor het slapen
+zingt.
+
+REGELS VOOR DE SONGTEKST
+- Nederlands, eenvoudige woorden die een kind van {leeftijd} begrijpt.
+- Korte regels van hooguit acht woorden, met een duidelijk rijm.
+- Deze opbouw, met de blokhaken er letterlijk bij:
+  [Intro], [Vers 1], [Refrein], [Vers 2], [Refrein], [Brug], [Refrein], [Outro]
+- Het refrein is elke keer hetzelfde, komt de naam {naam} in voor, en is kort
+  genoeg om mee te zingen.
+- Vers 1 en 2 vertellen het avontuur uit het verhaal na; de brug en de outro
+  worden rustig en slaperig en brengen {naam} naar bed.
+- Geen emoji's, geen aanwijzingen tussen haakjes behalve de blokhaken.
+
+REGELS VOOR DE STIJLREGEL
+- In het Engels, want die gaat naar het muziekmodel.
+- Eén regel, hooguit 20 woorden: genre, instrumenten, stem, tempo en sfeer.
+- Altijd rustig en zacht -- dit is een slaapliedje, geen kinderdisco.
+
+ANTWOORDFORMAAT
+Geef UITSLUITEND geldig JSON terug:
+{{
+  "titel": "Titel van het liedje, maximaal 5 woorden",
+  "stijl": "soft Dutch lullaby, gentle fingerpicked guitar, warm female voice, slow 6/8, music box",
+  "tekst": "[Intro]\\nregel\\n\\n[Vers 1]\\nregel\\nregel"
+}}
+""".strip()
+
+  def _aanroep():
+    return gcp.genai_client().models.generate_content(
+        model=config.TEXT_MODEL,
+        contents=[
+            f"Titel van het verhaal: {verhaal.get('titel', '')}\n"
+            f"Het verhaal: {verhaaltje}"
+        ],
+        config=types.GenerateContentConfig(
+            system_instruction=systeem,
+            response_mime_type="application/json",
+            temperature=1.0,
+            max_output_tokens=2000,
+        ),
+    )
+
+  antwoord = gcp.with_retries(_aanroep, omschrijving="Liedje schrijven")
+  data = _parse_json(antwoord.text)
+
+  tekst = str(data.get("tekst", "")).strip()
+  if len(tekst) < 40:
+    raise RuntimeError("Het model gaf geen bruikbare songtekst terug.")
+
+  return {
+      "titel": str(data.get("titel") or verhaal.get("titel", "Slaapliedje")).strip(),
+      "stijl": str(
+          data.get("stijl")
+          or "soft Dutch lullaby, gentle acoustic guitar, warm voice, slow tempo"
+      ).strip(),
+      "tekst": tekst,
+      "gemaakt_op": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+  }
+
+
+def liedje_voor(verhaal_id: str, vernieuw: bool = False) -> dict | None:
+  """Haalt het bewaarde liedje op, of schrijft er een nieuw."""
+  verhaal = lees_verhaal(verhaal_id)
+  if not verhaal:
+    return None
+  if verhaal.get("liedje") and not vernieuw:
+    return verhaal["liedje"]
+
+  liedje = genereer_liedje(verhaal, lees_profiel())
+  verhaal["liedje"] = liedje
+  _bewaar(verhaal)
+  return liedje
+
+
 # --- Suggesties -------------------------------------------------------------
 SUGGESTIES_PATH_NAAM = "suggesties.json"
 SUGGESTIES_GELDIG_UREN = 20

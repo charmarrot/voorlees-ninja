@@ -122,7 +122,8 @@
     <div class="voet-zij">
       <button class="knop bladerknop" id="knop-vorige" aria-label="Vorige bladzijde">←</button>
       <button class="knop herhaalknop" id="knop-herhaal"
-              aria-label="Deze bladzijde nog een keer voorlezen" title="Nog een keer">↻</button>
+              aria-label="Het hele verhaal opnieuw voorlezen"
+              title="Vanaf het begin">↻</button>
     </div>
     <button class="knop speelknop" id="knop-speel" aria-label="Voorlezen starten">▶</button>
     <div class="voet-zij rechts">
@@ -202,12 +203,45 @@
   <div class="paneel" role="dialog" aria-label="Opties voor dit verhaal">
     <div class="greep"></div>
     <h2 id="verhaal-opties-titel">Dit verhaaltje</h2>
-    <button class="knop knop-vol" style="margin-bottom:8px" id="knop-opnieuw" type="button">🔄 Vanaf het begin voorlezen</button>
+    <button class="knop knop-vol" style="margin-bottom:8px" id="knop-liedje" type="button">🎵 Maak er een liedje van</button>
     <button class="knop knop-vol" style="margin-bottom:8px" id="knop-favoriet" type="button">⭐ Favoriet maken</button>
     <button class="knop knop-vol" style="margin-bottom:8px" id="knop-offline" type="button">📥 Bewaar offline</button>
     <button class="knop knop-vol" style="margin-bottom:8px" id="knop-tekstgrootte" type="button">🔠 Grotere letters</button>
     <button class="knop knop-vol knop-gevaar" style="margin-bottom:8px" id="knop-verwijder" type="button">🗑️ Verwijderen</button>
     <button class="knop knop-vol knop-stil" id="knop-sluit-verhaal" type="button">Sluiten</button>
+  </div>
+</div>
+
+<!-- ============ Paneel: slaapliedje ============ -->
+<div class="paneel-achtergrond verborgen" id="paneel-liedje">
+  <div class="paneel" role="dialog" aria-label="Slaapliedje">
+    <div class="greep"></div>
+    <h2 id="liedje-titel">🎵 Slaapliedje</h2>
+
+    <div id="liedje-bezig" class="liedje-bezig">
+      <div class="noot">🎶</div>
+      <p>De woorden worden op muziek gezet…</p>
+    </div>
+
+    <div id="liedje-inhoud" class="verborgen">
+      <div class="formulier-rij">
+        <label for="liedje-stijl">Muziekstijl — plak dit in het stijlveld</label>
+        <div class="kopieerrij">
+          <textarea id="liedje-stijl" class="stijlveld" readonly rows="2"></textarea>
+          <button class="knop knop-mini kopieerknop" id="knop-kopieer-stijl" type="button">Kopieer</button>
+        </div>
+      </div>
+
+      <div class="formulier-rij">
+        <label for="liedje-tekst">Songtekst</label>
+        <textarea id="liedje-tekst" class="songtekst" readonly rows="14"></textarea>
+      </div>
+
+      <button class="knop knop-hoofd knop-vol" id="knop-kopieer-liedje" type="button">📋 Kopieer de songtekst</button>
+      <button class="knop knop-vol" style="margin-top:8px" id="knop-nieuw-liedje" type="button">↻ Schrijf een ander liedje</button>
+    </div>
+
+    <button class="knop knop-vol knop-stil" style="margin-top:8px" id="knop-sluit-liedje" type="button">Sluiten</button>
   </div>
 </div>
 

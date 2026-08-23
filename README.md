@@ -21,7 +21,13 @@ slaapkamer.
   als referentie, zodat het figuurtje en de tekenstijl door het hele boekje
   hetzelfde blijven.
 - **Voorlezen per bladzijde** met automatisch omslaan, plus een "welterusten"
-  aan het eind. Het scherm blijft aan tijdens het voorlezen.
+  aan het eind. Het scherm blijft aan tijdens het voorlezen. De ↻-knop naast
+  de speelknop begint het hele verhaal opnieuw — voor als het "nog een keer!"
+  wordt.
+- **Slaapliedje bij het verhaal**: onder ⋯ maakt Gemini er een Nederlandse
+  songtekst van met `[Vers]`- en `[Refrein]`-blokken, plus een Engelse
+  stijlregel. Beide met één tik te kopiëren en zo in Suno of Gemini met
+  muziek te plakken. Het liedje wordt bij het verhaal bewaard.
 - **Boekenplank** met alle eerdere verhaaltjes, favorieten bovenaan.
 - **Vegen, pijltjestoetsen en spatie** om te bladeren en voor te lezen.
 - **Schermdimmer** voor als het echt donker moet.

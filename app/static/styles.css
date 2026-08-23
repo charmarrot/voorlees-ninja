@@ -517,6 +517,32 @@ button { border: none; background: none; cursor: pointer; }
 .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 input[type="range"] { width: 100%; accent-color: var(--maan); height: 34px; }
 
+/* ---------- Slaapliedje ---------- */
+.liedje-bezig { text-align: center; padding: 26px 10px; color: var(--inkt-zacht); }
+.liedje-bezig .noot { font-size: 2.6rem; animation: zweef 3s ease-in-out infinite; }
+.kopieerrij { display: flex; gap: 8px; align-items: stretch; }
+.kopieerrij .stijlveld { flex: 1; min-width: 0; min-height: 0; resize: none; }
+.kopieerknop {
+  flex: none;
+  background: var(--nacht-4);
+  border: 1px solid var(--rand);
+  border-radius: var(--radius-klein);
+  color: var(--maan);
+}
+.songtekst {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: var(--radius-klein);
+  background: var(--nacht-1);
+  border: 1px solid var(--rand);
+  color: var(--inkt);
+  font-family: ui-monospace, "SFMono-Regular", "Cascadia Mono", Menlo, monospace;
+  font-size: .92rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  resize: vertical;
+}
+
 /* ---------- Pincodescherm ---------- */
 .slot {
   min-height: 100dvh;

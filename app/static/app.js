@@ -444,29 +444,22 @@
     if (e.key === 'ArrowLeft') { stopVoorlezen(); naarBladzijde(staat.bladzijde - 1); }
     if (e.key === 'Escape') sluitLezer();
     if (e.key === ' ') { e.preventDefault(); wisselVoorlezen(); }
-    if (e.key === 'r' || e.key === 'R') herhaalBladzijde();
+    if (e.key === 'r' || e.key === 'R') leesVanafBegin();
   });
 
   /* ---------------- Voorlezen ---------------- */
   const speler = $('speler');
 
   $('knop-speel').addEventListener('click', wisselVoorlezen);
-  $('knop-herhaal').addEventListener('click', herhaalBladzijde);
+  $('knop-herhaal').addEventListener('click', leesVanafBegin);
 
-  /* "Lees hem nog een keer voor": begint deze bladzijde opnieuw, zonder om te
-     slaan. Werkt ook als de verteller al bezig is. */
-  function herhaalBladzijde() {
+  /* "Nog een keer!": het hele verhaal opnieuw, vanaf de eerste bladzijde. */
+  function leesVanafBegin() {
     if (!staat.verhaal) return;
     const knop = $('knop-herhaal');
     knop.classList.remove('draait');
     void knop.offsetWidth;  // herstart de animatie
     knop.classList.add('draait');
-    stopVoorlezen();
-    startVoorlezen({ alleenDezeBladzijde: true });
-  }
-
-  function leesVanafBegin() {
-    if (!staat.verhaal) return;
     stopVoorlezen();
     naarBladzijde(0);
     startVoorlezen();
@@ -476,29 +469,22 @@
     if (staat.speelt) stopVoorlezen(); else startVoorlezen();
   }
 
-  function startVoorlezen({ alleenDezeBladzijde = false } = {}) {
+  function startVoorlezen() {
     const verhaal = staat.verhaal;
     if (!verhaal) return;
     const map = `/media/${verhaal.id}`;
     staat.programma = [];
 
-    if (alleenDezeBladzijde) {
-      const scene = verhaal.scenes[staat.bladzijde];
-      if (scene && scene.audio) {
-        staat.programma.push({ url: `${map}/${scene.audio}`, bladzijde: staat.bladzijde });
-      }
-    } else {
-      if (staat.bladzijde === 0 && verhaal.titel_audio) {
-        staat.programma.push({ url: `${map}/${verhaal.titel_audio}`, bladzijde: 0 });
-      }
-      for (let i = staat.bladzijde; i < verhaal.scenes.length; i++) {
-        const scene = verhaal.scenes[i];
-        if (scene.audio) staat.programma.push({ url: `${map}/${scene.audio}`, bladzijde: i });
-        if (!staat.autoblader) break;
-      }
-      if (staat.autoblader && verhaal.slot_audio) {
-        staat.programma.push({ url: `${map}/${verhaal.slot_audio}`, bladzijde: null });
-      }
+    if (staat.bladzijde === 0 && verhaal.titel_audio) {
+      staat.programma.push({ url: `${map}/${verhaal.titel_audio}`, bladzijde: 0 });
+    }
+    for (let i = staat.bladzijde; i < verhaal.scenes.length; i++) {
+      const scene = verhaal.scenes[i];
+      if (scene.audio) staat.programma.push({ url: `${map}/${scene.audio}`, bladzijde: i });
+      if (!staat.autoblader) break;
+    }
+    if (staat.autoblader && verhaal.slot_audio) {
+      staat.programma.push({ url: `${map}/${verhaal.slot_audio}`, bladzijde: null });
     }
     if (!staat.programma.length) { meld('Bij dit verhaaltje zit geen geluid.', 'fout'); return; }
 
@@ -571,14 +557,73 @@
       ? '⭐ Uit favorieten halen' : '⭐ Favoriet maken';
     $('knop-tekstgrootte').textContent = staat.grooteLetters
       ? '🔠 Gewone letters' : '🔠 Grotere letters';
+    $('knop-liedje').textContent = staat.verhaal.liedje
+      ? '🎵 Bekijk het liedje' : '🎵 Maak er een liedje van';
     toon('paneel-verhaal');
   });
   $('knop-sluit-verhaal').addEventListener('click', () => verberg('paneel-verhaal'));
 
-  $('knop-opnieuw').addEventListener('click', () => {
+  $('knop-liedje').addEventListener('click', () => {
     verberg('paneel-verhaal');
-    leesVanafBegin();
+    openLiedje();
   });
+
+  /* ---------------- Slaapliedje ---------------- */
+  async function openLiedje({ vernieuw = false } = {}) {
+    const verhaal = staat.verhaal;
+    if (!verhaal) return;
+    toon('paneel-liedje');
+    $('liedje-titel').textContent = '🎵 Slaapliedje';
+
+    if (verhaal.liedje && !vernieuw) { vulLiedje(verhaal.liedje); return; }
+
+    toon('liedje-bezig');
+    verberg('liedje-inhoud');
+    try {
+      const liedje = await api(`/api/verhalen/${verhaal.id}/liedje`, {
+        method: 'POST', body: JSON.stringify({ vernieuw }),
+      });
+      verhaal.liedje = liedje;
+      vulLiedje(liedje);
+    } catch (fout) {
+      verberg('paneel-liedje');
+      meld(fout.message, 'fout');
+    } finally {
+      verberg('liedje-bezig');
+    }
+  }
+
+  function vulLiedje(liedje) {
+    $('liedje-titel').textContent = `🎵 ${liedje.titel || 'Slaapliedje'}`;
+    $('liedje-stijl').value = liedje.stijl || '';
+    $('liedje-tekst').value = liedje.tekst || '';
+    verberg('liedje-bezig');
+    toon('liedje-inhoud');
+  }
+
+  async function kopieer(tekst, knop, gelukt) {
+    try {
+      await navigator.clipboard.writeText(tekst);
+    } catch (_) {
+      // Oudere browsers, of geen https: dan maar via het invoerveld.
+      knop.blur();
+      const veld = knop === $('knop-kopieer-stijl') ? $('liedje-stijl') : $('liedje-tekst');
+      veld.focus();
+      veld.select();
+      try { document.execCommand('copy'); } catch (__) {
+        meld('Kopiëren lukt niet; selecteer de tekst zelf even.', 'fout');
+        return;
+      }
+    }
+    meld(gelukt, 'goed');
+  }
+
+  $('knop-kopieer-liedje').addEventListener('click', (e) =>
+    kopieer($('liedje-tekst').value, e.currentTarget, 'Songtekst gekopieerd 📋'));
+  $('knop-kopieer-stijl').addEventListener('click', (e) =>
+    kopieer($('liedje-stijl').value, e.currentTarget, 'Muziekstijl gekopieerd 📋'));
+  $('knop-nieuw-liedje').addEventListener('click', () => openLiedje({ vernieuw: true }));
+  $('knop-sluit-liedje').addEventListener('click', () => verberg('paneel-liedje'));
 
   $('knop-favoriet').addEventListener('click', async () => {
     if (!staat.verhaal) return;

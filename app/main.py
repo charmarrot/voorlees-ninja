@@ -278,6 +278,25 @@ async def favoriet(verhaal_id: str, gegevens: dict = Body(default={})):
   return {"ok": True, "favoriet": bijgewerkt["favoriet"]}
 
 
+@app.post(
+    "/api/verhalen/{verhaal_id}/liedje",
+    dependencies=[Depends(auth.vereis_toegang)],
+)
+async def liedje(verhaal_id: str, gegevens: dict = Body(default={})):
+  """Schrijft (of herschrijft) een slaapliedje bij een verhaal."""
+  vernieuw = bool(gegevens.get("vernieuw"))
+  try:
+    gevonden = await asyncio.to_thread(story.liedje_voor, verhaal_id, vernieuw)
+  except ValueError:
+    raise HTTPException(status_code=400, detail="Ongeldig verhaal-id")
+  except Exception as exc:  # noqa: BLE001
+    log.exception("Liedje schrijven mislukt")
+    raise HTTPException(status_code=502, detail=_leesbare_fout(exc))
+  if not gevonden:
+    raise HTTPException(status_code=404, detail="Verhaaltje niet gevonden")
+  return gevonden
+
+
 @app.delete(
     "/api/verhalen/{verhaal_id}", dependencies=[Depends(auth.vereis_toegang)]
 )
