@@ -11,6 +11,11 @@ slaapkamer.
 ## Wat kan het?
 
 - **Verhaal maken** vanuit een eigen idee of een van de suggestietegels.
+- **Verse ideeën**: de suggestietegels worden door Gemini verzonnen op basis
+  van het profiel (naam, leeftijd, woonplaats, interesses) en een dag lang
+  bewaard in `suggesties.json` — dat is één goedkope tekstaanroep per dag. Met
+  "Andere ideeën" vraag je meteen een nieuwe set. Lukt dat niet, dan valt de
+  app terug op haar eigen ingebouwde lijst, ook offline.
 - **Kort / gewoon / lang**: 3, 4 of 6 bladzijden.
 - **Prentenboek met vaste hoofdpersoon**: elke illustratie krijgt de vorige mee
   als referentie, zodat het figuurtje en de tekenstijl door het hele boekje

@@ -167,6 +167,149 @@ def genereer_tekst(idee: str, profiel: dict, aantal_scenes: int) -> dict:
   }
 
 
+# --- Suggesties -------------------------------------------------------------
+SUGGESTIES_PATH_NAAM = "suggesties.json"
+SUGGESTIES_GELDIG_UREN = 20
+_laatste_suggestie_ronde = 0.0
+
+
+def _suggesties_pad() -> Path:
+  return config.DATA_DIR / SUGGESTIES_PATH_NAAM
+
+
+def _profiel_sleutel(profiel: dict) -> str:
+  """Verandert zodra iets meespeelt in de ideeën, zodat de cache vervalt."""
+  return "|".join(
+      str(profiel.get(veld, ""))
+      for veld in ("naam", "leeftijd", "plaats", "favorieten")
+  )
+
+
+def genereer_suggesties(profiel: dict, vermijd: list[str], aantal: int = 8) -> list[dict]:
+  """Laat Gemini een handvol frisse verhaalideeën verzinnen."""
+  from google.genai import types
+
+  naam = profiel.get("naam", "Leo")
+  leeftijd = profiel.get("leeftijd", 3)
+  plaats = profiel.get("plaats", "Rotterdam")
+  favorieten = profiel.get("favorieten", "")
+  eerder = ", ".join(vermijd[:24]) or "nog niets"
+
+  systeem = f"""
+Je verzint korte ideeën voor bedtijdverhalen voor {naam}, een kind van
+{leeftijd} jaar uit {plaats}. {naam} houdt van: {favorieten}.
+
+Geef precies {aantal} ideeën, allemaal verschillend van elkaar. Zorg voor
+variatie: iets uit {plaats}, iets met dieren, iets met voertuigen, iets uit
+het dagelijks leven (bad, tandenpoetsen, boodschappen), iets met het weer of
+een seizoen, en iets fantasievols. Alles vrolijk en veilig — niets engs.
+
+Vermijd ideeën die lijken op: {eerder}.
+
+Elk idee bestaat uit:
+- "emoji": één passende emoji.
+- "label": maximaal 4 woorden, zoals het op een knopje staat.
+- "idee": één zin van 8 tot 16 woorden die begint met "{naam} " en vertelt
+  wat er gebeurt.
+
+Antwoord UITSLUITEND met geldige JSON:
+{{"suggesties": [{{"emoji": "🚋", "label": "Tram over de brug",
+  "idee": "{naam} rijdt met tram 3 over de brug en zwaait naar alle boten"}}]}}
+""".strip()
+
+  def _aanroep():
+    return gcp.genai_client().models.generate_content(
+        model=config.TEXT_MODEL,
+        contents=["Verzin nieuwe ideeën."],
+        config=types.GenerateContentConfig(
+            system_instruction=systeem,
+            response_mime_type="application/json",
+            temperature=1.2,
+            top_p=0.97,
+            max_output_tokens=1500,
+        ),
+    )
+
+  antwoord = gcp.with_retries(
+      _aanroep, pogingen=2, omschrijving="Suggesties verzinnen"
+  )
+  data = _parse_json(antwoord.text)
+
+  schoon = []
+  for item in (data.get("suggesties") or [])[:aantal]:
+    label = str(item.get("label", "")).strip()
+    idee = str(item.get("idee", "")).strip()
+    emoji = str(item.get("emoji", "")).strip()[:4] or "✨"
+    if not label or len(idee) < 12:
+      continue
+    schoon.append({"emoji": emoji, "label": label[:40], "idee": idee[:200]})
+  if len(schoon) < 3:
+    raise RuntimeError("Te weinig bruikbare suggesties terug.")
+  return schoon
+
+
+def lees_suggesties(vernieuw: bool = False) -> dict:
+  """Ideeën uit de cache, of vers verzonnen als die verlopen is.
+
+  Geeft een lege lijst terug als Google niet meewerkt; de app valt dan terug
+  op haar eigen ingebouwde lijst.
+  """
+  global _laatste_suggestie_ronde
+
+  profiel = lees_profiel()
+  sleutel = _profiel_sleutel(profiel)
+  pad = _suggesties_pad()
+  bewaard: dict = {}
+  if pad.is_file():
+    try:
+      bewaard = json.loads(pad.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+      bewaard = {}
+
+  vers_genoeg = False
+  if bewaard.get("sleutel") == sleutel and bewaard.get("suggesties"):
+    try:
+      gemaakt = datetime.fromisoformat(bewaard["gemaakt_op"])
+      ouderdom = (datetime.now(timezone.utc) - gemaakt).total_seconds() / 3600
+      vers_genoeg = ouderdom < SUGGESTIES_GELDIG_UREN
+    except (KeyError, ValueError):
+      vers_genoeg = False
+
+  if vers_genoeg and not vernieuw:
+    return {"suggesties": bewaard["suggesties"], "bron": "cache"}
+
+  # Rem tegen driftig tikken op "andere ideeën".
+  nu = time.monotonic()
+  if vernieuw and nu - _laatste_suggestie_ronde < 20:
+    return {
+        "suggesties": bewaard.get("suggesties", []),
+        "bron": "cache",
+        "wacht": True,
+    }
+
+  try:
+    vermijd = [s.get("label", "") for s in bewaard.get("suggesties", [])]
+    nieuw = genereer_suggesties(profiel, vermijd)
+    _laatste_suggestie_ronde = nu
+  except Exception as exc:  # noqa: BLE001
+    log.warning("Suggesties verzinnen mislukt: %s", exc)
+    return {"suggesties": bewaard.get("suggesties", []), "bron": "cache"}
+
+  pad.write_text(
+      json.dumps(
+          {
+              "sleutel": sleutel,
+              "gemaakt_op": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+              "suggesties": nieuw,
+          },
+          ensure_ascii=False,
+          indent=2,
+      ),
+      encoding="utf-8",
+  )
+  return {"suggesties": nieuw, "bron": "gemini"}
+
+
 # --- Beeld ------------------------------------------------------------------
 def genereer_afbeelding(
     prompt: str, doel_zonder_ext: Path, referentie: Path | None = None

@@ -173,6 +173,21 @@ button { border: none; background: none; cursor: pointer; }
 .veld::placeholder { color: var(--inkt-dof); }
 .veld:focus { border-color: var(--maan); outline: none; }
 
+.tegels-kop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 2px 0;
+}
+.knop-mini {
+  min-height: 38px;
+  white-space: nowrap;
+  padding: 6px 12px;
+  font-size: .85rem;
+  font-weight: 700;
+  color: var(--maan);
+}
 .tegels {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));

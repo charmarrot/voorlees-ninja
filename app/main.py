@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import mimetypes
 import re
@@ -226,6 +227,13 @@ async def profiel_opslaan(nieuw: dict = Body(...)):
   if not isinstance(nieuw, dict):
     raise HTTPException(status_code=400, detail="Ongeldig profiel")
   return story.schrijf_profiel(nieuw)
+
+
+@app.get("/api/suggesties", dependencies=[Depends(auth.vereis_toegang)])
+async def suggesties(vernieuw: bool = False):
+  """Verhaalideeën, door Gemini verzonnen en een dag lang bewaard."""
+  # In een aparte draad: de Google-aanroep is blokkerend.
+  return await asyncio.to_thread(story.lees_suggesties, vernieuw)
 
 
 @app.get("/api/stemmen", dependencies=[Depends(auth.vereis_toegang)])
