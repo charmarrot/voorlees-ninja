@@ -12,7 +12,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app import gcp, story  # noqa: E402
 
-AANROEPEN = {"tekst": 0, "beeld": 0, "beeld_met_referentie": 0, "audio": 0}
+AANROEPEN = {"tekst": 0, "beeld": 0, "beeld_met_referentie": 0, "audio": 0,
+             "suggesties": 0, "liedje": 0}
 PNG = b"\x89PNG\r\n\x1a\nnepplaatje"
 
 
@@ -35,6 +36,21 @@ class NepModellen:
       if any(not isinstance(deel, str) for deel in contents):
         AANROEPEN["beeld_met_referentie"] += 1
       return NepAntwoord(beeld=True)
+    if contents and str(contents[0]).startswith("Titel van het verhaal:"):
+      AANROEPEN["liedje"] += 1
+      return NepAntwoord(tekst=json.dumps({
+          "titel": "Slaap zacht, Leo",
+          "stijl": "soft Dutch lullaby, gentle guitar, warm voice, slow 6/8",
+          "tekst": "[Intro]\nSssst\n\n[Vers 1]\nLeo rijdt door de nacht\n"
+                   "\n[Refrein]\nSlaap zacht, Leo, slaap zacht\n",
+      }))
+    if contents and contents[0] == "Verzin nieuwe ideeën.":
+      AANROEPEN["suggesties"] += 1
+      return NepAntwoord(tekst=json.dumps({"suggesties": [
+          {"emoji": "🚋", "label": f"Idee {n}",
+           "idee": f"Leo beleeft avontuur nummer {n} in de stad"}
+          for n in range(1, 9)
+      ]}))
     AANROEPEN["tekst"] += 1
     # Het model levert JSON in een codeblok: de parser moet daar tegen kunnen.
     return NepAntwoord(tekst="```json\n" + json.dumps({
@@ -91,6 +107,38 @@ print("✓ voortgang loopt netjes op naar 100%")
 lijst = story.bibliotheek()
 assert len(lijst) == 1 and lijst[0]["omslag"] == "scene_1.png"
 print("✓ verhaal staat op de boekenplank")
+
+# Slaapliedje: één keer schrijven, daarna bij het verhaal bewaard.
+lied = story.liedje_voor(vid)
+assert lied["titel"] == "Slaap zacht, Leo" and "[Refrein]" in lied["tekst"], lied
+assert lied["stijl"].startswith("soft Dutch lullaby")
+assert AANROEPEN["liedje"] == 1
+assert story.lees_verhaal(vid)["liedje"]["tekst"] == lied["tekst"]
+nogmaals = story.liedje_voor(vid)
+assert AANROEPEN["liedje"] == 1, "liedje werd onnodig opnieuw geschreven"
+opnieuw = story.liedje_voor(vid, vernieuw=True)
+assert AANROEPEN["liedje"] == 2 and opnieuw["tekst"] == lied["tekst"]
+assert story.liedje_voor("bestaat-niet-hier") is None
+print("✓ slaapliedje geschreven, bewaard en op verzoek herschreven")
+
+# Suggesties: één keer verzinnen, daarna uit de cache.
+eerste = story.lees_suggesties()
+assert eerste["bron"] == "gemini" and len(eerste["suggesties"]) == 8, eerste
+assert AANROEPEN["suggesties"] == 1
+tweede = story.lees_suggesties()
+assert tweede["bron"] == "cache" and AANROEPEN["suggesties"] == 1, tweede
+print("✓ suggesties worden één keer verzonnen en daarna bewaard")
+
+# Kort na elkaar vernieuwen wordt afgeremd.
+geremd = story.lees_suggesties(vernieuw=True)
+assert geremd.get("wacht") is True and AANROEPEN["suggesties"] == 1, geremd
+print("✓ driftig vernieuwen wordt afgeremd")
+
+# Verandert het profiel, dan vervalt de cache.
+story.schrijf_profiel({"naam": "Mila", "plaats": "Utrecht"})
+na_wijziging = story.lees_suggesties()
+assert na_wijziging["bron"] == "gemini" and AANROEPEN["suggesties"] == 2, na_wijziging
+print("✓ nieuw profiel geeft nieuwe ideeën")
 
 # Mislukt de beeldgeneratie, dan blijft er geen half boekje achter.
 gcp.genai_client = lambda: types.SimpleNamespace(

@@ -23,9 +23,11 @@ assert r.status_code == 200 and "Voorlees Ninja" in r.text, r.status_code
 print("✓ startpagina")
 
 # 2. Alles achter de pin is dicht
-for pad in ("/api/verhalen", "/api/profiel", "/media/abc/scene_1.png"):
+for pad in ("/api/verhalen", "/api/profiel", "/api/suggesties",
+            "/media/abc/scene_1.png"):
     assert c.get(pad).status_code == 401, pad
 assert c.post("/api/genereer", json={"prompt": "test"}).status_code == 401
+assert c.post("/api/verhalen/abc/liedje", json={}).status_code == 401
 print("✓ pincode beschermt api en media")
 
 # 2b. Het vibecode-log moet juist WEL zonder pincode bereikbaar zijn
@@ -79,6 +81,25 @@ for slecht in ("/media/..%2F..%2Fetc/passwd", f"/media/{vid}/../verhaal.json",
     assert code in (400, 404, 405), (slecht, code)
 assert c.get("/api/verhalen/../../etc").status_code in (400, 404)
 print("✓ padtrucs geblokkeerd")
+
+# 6a. Liedje: onbekend verhaal geeft 404, kapotte Google-aanroep geen 500
+assert c.post(f"/api/verhalen/{vid}-bestaat-niet/liedje", json={}).status_code == 404
+def _geen_muziek(*a, **k):
+    raise RuntimeError("quota bereikt")
+story.genereer_liedje = _geen_muziek
+mislukt = c.post(f"/api/verhalen/{vid}/liedje", json={})
+assert mislukt.status_code == 502, mislukt.status_code
+assert "quotum" in mislukt.json()["detail"].lower(), mislukt.json()
+print("✓ liedje: nette foutmeldingen bij onbekend verhaal en falende Google")
+
+# 6b. Suggesties: achter de pincode, en netjes terugvallen als Google faalt
+def _stuk(*a, **k):
+    raise RuntimeError("geen verbinding met Google")
+story.genereer_suggesties = _stuk
+antwoord = c.get("/api/suggesties")
+assert antwoord.status_code == 200, antwoord.status_code
+assert antwoord.json()["suggesties"] == [], antwoord.json()
+print("✓ suggesties vallen terug op de vaste lijst als Google faalt")
 
 # 7. Invoercontrole bij genereren
 assert c.post("/api/genereer", json={"prompt": "ab"}).status_code == 400

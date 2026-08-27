@@ -173,6 +173,21 @@ button { border: none; background: none; cursor: pointer; }
 .veld::placeholder { color: var(--inkt-dof); }
 .veld:focus { border-color: var(--maan); outline: none; }
 
+.tegels-kop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 2px 0;
+}
+.knop-mini {
+  min-height: 38px;
+  white-space: nowrap;
+  padding: 6px 12px;
+  font-size: .85rem;
+  font-weight: 700;
+  color: var(--maan);
+}
 .tegels {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -501,6 +516,32 @@ button { border: none; background: none; cursor: pointer; }
 .formulier-rij .hint { font-size: .8rem; color: var(--inkt-dof); margin-top: 6px; }
 .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 input[type="range"] { width: 100%; accent-color: var(--maan); height: 34px; }
+
+/* ---------- Slaapliedje ---------- */
+.liedje-bezig { text-align: center; padding: 26px 10px; color: var(--inkt-zacht); }
+.liedje-bezig .noot { font-size: 2.6rem; animation: zweef 3s ease-in-out infinite; }
+.kopieerrij { display: flex; gap: 8px; align-items: stretch; }
+.kopieerrij .stijlveld { flex: 1; min-width: 0; min-height: 0; resize: none; }
+.kopieerknop {
+  flex: none;
+  background: var(--nacht-4);
+  border: 1px solid var(--rand);
+  border-radius: var(--radius-klein);
+  color: var(--maan);
+}
+.songtekst {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: var(--radius-klein);
+  background: var(--nacht-1);
+  border: 1px solid var(--rand);
+  color: var(--inkt);
+  font-family: ui-monospace, "SFMono-Regular", "Cascadia Mono", Menlo, monospace;
+  font-size: .92rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  resize: vertical;
+}
 
 /* ---------- Pincodescherm ---------- */
 .slot {
