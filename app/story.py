@@ -238,11 +238,17 @@ Geef UITSLUITEND geldig JSON terug:
             system_instruction=systeem,
             response_mime_type="application/json",
             temperature=1.0,
-            max_output_tokens=2000,
+            # Ruim bemeten: acht coupletblokken in JSON passen krap in 2000
+            # tokens, en een afgekapt antwoord geeft ongeldige JSON.
+            max_output_tokens=4096,
         ),
     )
 
   antwoord = gcp.with_retries(_aanroep, omschrijving="Liedje schrijven")
+  if not antwoord.text:
+    raise RuntimeError(
+        "Het model gaf geen tekst terug (mogelijk afgekapt of geblokkeerd)."
+    )
   data = _parse_json(antwoord.text)
 
   tekst = str(data.get("tekst", "")).strip()

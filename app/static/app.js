@@ -91,10 +91,20 @@
       naarSlot();
       throw new Error('Pincode vereist');
     }
+    const kopie = antwoord.clone();
     let gegevens = null;
     try { gegevens = await antwoord.json(); } catch (_) {}
     if (!antwoord.ok) {
-      throw new Error((gegevens && gegevens.detail) || 'Er ging iets mis');
+      if (gegevens && gegevens.detail) throw new Error(gegevens.detail);
+      // Geen (bruikbare) JSON terug -- vaak een tussenliggende foutpagina
+      // (Cloudflare, de proxy) in plaats van een antwoord van de app zelf.
+      // Log de ruwe inhoud, zodat dit soort fouten niet stil blijft.
+      let ruw = '';
+      try { ruw = (await kopie.text()).slice(0, 300); } catch (_) {}
+      console.warn(`API-fout ${antwoord.status} op ${pad}:`, ruw || '(leeg antwoord)');
+      throw new Error(
+          `Er ging iets mis (foutcode ${antwoord.status}). Probeer het nog eens.`
+      );
     }
     return gegevens;
   }
