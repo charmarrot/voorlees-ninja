@@ -140,30 +140,41 @@ assert story.liedje_voor("bestaat-niet-hier") is None
 print("✓ slaapliedje geschreven, bewaard en op verzoek herschreven")
 
 # Experimenteel: het liedje laten zingen via Lyria. Kan pas als er al een
-# songtekst is; wat Lyria teruggeeft (ruwe PCM) moet zelf in een afspeelbare
-# WAV verpakt worden.
-import wave  # noqa: E402
+# songtekst is; wat Lyria teruggeeft (ruwe PCM) moet altijd een echt,
+# afspeelbaar mp3-bestand worden -- niet soms wav, soms iets anders.
+def _is_geldige_mp3(data: bytes) -> bool:
+  return len(data) > 100 and data[0] == 0xFF and (data[1] & 0xE0) == 0xE0
 
 geen_tekst_nog = story.gezongen_liedje_voor("een-verhaal-zonder-liedje")
 assert geen_tekst_nog is None
 
 gezongen = story.gezongen_liedje_voor(vid)
-assert gezongen["bestand"] == "liedje_gezongen.wav" and gezongen["mime"] == "audio/wav"
+assert gezongen["bestand"] == "liedje_gezongen.mp3" and gezongen["mime"] == "audio/mpeg"
 assert AANROEPEN["gezongen"] == 1
-wav_pad = map_pad / gezongen["bestand"]
-assert wav_pad.is_file()
-with wave.open(str(wav_pad), "rb") as w:
-  assert w.getframerate() == 24000, w.getframerate()
-  assert w.getnchannels() == 1
-  assert w.getsampwidth() == 2
-  assert w.getnframes() == 4000, w.getnframes()  # 8000 bytes / 2 bytes per sample
+mp3_pad = map_pad / gezongen["bestand"]
+assert mp3_pad.is_file()
+assert _is_geldige_mp3(mp3_pad.read_bytes()), "geen geldige mp3-syncheader"
 assert story.lees_verhaal(vid)["liedje"]["gezongen"]["bestand"] == gezongen["bestand"]
 
 nogmaals_gezongen = story.gezongen_liedje_voor(vid)
 assert AANROEPEN["gezongen"] == 1, "gezongen versie werd onnodig opnieuw gemaakt"
 opnieuw_gezongen = story.gezongen_liedje_voor(vid, vernieuw=True)
 assert AANROEPEN["gezongen"] == 2
-print("✓ experimenteel: ruwe PCM van Lyria wordt een geldige, afspeelbare WAV")
+print("✓ experimenteel: ruwe PCM van Lyria wordt een geldig, afspeelbaar mp3-bestand")
+
+# Aangepaste stijl/tekst meesturen wordt bewaard en dwingt een nieuwe poging
+# af, ook zonder vernieuw=True -- een edit negeren zou verwarrend zijn.
+aangepast = story.gezongen_liedje_voor(
+    vid, stijl="andere stijl", tekst="[Intro]\nhelemaal nieuwe tekst hier\n\n[Refrein]\nx"
+)
+assert AANROEPEN["gezongen"] == 3, "een aanpassing had een nieuwe poging moeten forceren"
+bewaard = story.lees_verhaal(vid)["liedje"]
+assert bewaard["stijl"] == "andere stijl", bewaard["stijl"]
+assert "helemaal nieuwe tekst" in bewaard["tekst"], bewaard["tekst"]
+# Dezelfde tekst nogmaals meesturen (geen echte wijziging) forceert niets.
+story.gezongen_liedje_voor(vid, stijl="andere stijl", tekst=bewaard["tekst"])
+assert AANROEPEN["gezongen"] == 3, "ongewijzigde stijl/tekst had niets moeten forceren"
+print("✓ experimenteel: aangepaste stijl/tekst wordt bewaard en opnieuw gezongen")
 
 GEZONGEN_INSTELLING["mislukken"] = True
 try:

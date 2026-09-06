@@ -227,14 +227,15 @@
       <div class="formulier-rij">
         <label for="liedje-stijl">Muziekstijl — plak dit in het stijlveld</label>
         <div class="kopieerrij">
-          <textarea id="liedje-stijl" class="stijlveld" readonly rows="2"></textarea>
+          <textarea id="liedje-stijl" class="stijlveld" rows="2"></textarea>
           <button class="knop knop-mini kopieerknop" id="knop-kopieer-stijl" type="button">Kopieer</button>
         </div>
       </div>
 
       <div class="formulier-rij">
         <label for="liedje-tekst">Songtekst</label>
-        <textarea id="liedje-tekst" class="songtekst" readonly rows="14"></textarea>
+        <textarea id="liedje-tekst" class="songtekst" rows="14"></textarea>
+        <div class="hint">Pas gerust aan — een wijziging wordt bewaard zodra je op zingen drukt.</div>
       </div>
 
       <button class="knop knop-hoofd knop-vol" id="knop-kopieer-liedje" type="button">📋 Kopieer de songtekst</button>
@@ -253,6 +254,7 @@
       </div>
       <p id="gezongen-fout" class="experiment-fout verborgen"></p>
       <audio id="gezongen-speler" class="verborgen" controls style="width:100%"></audio>
+      <a id="knop-download-gezongen" class="knop knop-vol verborgen" style="margin-top:8px" download>⬇️ Download het mp3-bestand</a>
     </div>
 
     <button class="knop knop-vol knop-stil" style="margin-top:8px" id="knop-sluit-liedje" type="button">Sluiten</button>

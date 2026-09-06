@@ -33,7 +33,10 @@ slaapkamer.
   Google zelf nog in preview: het is onbevestigd of het project er toegang
   toe heeft, of het Nederlands zingt, en wat het kost. Mislukt het, dan
   blijft de songtekst hierboven gewoon bruikbaar in Suno — dit is puur een
-  bonus als het werkt.
+  bonus als het werkt (en in de praktijk werkt het goed, ook in het
+  Nederlands). Stijl en songtekst zijn ter plekke aan te passen voor je op
+  zingen drukt; het resultaat komt altijd terug als een gewoon, deelbaar
+  mp3-bestand met een eigen downloadknop.
 - **Boekenplank** met alle eerdere verhaaltjes, favorieten bovenaan.
 - **Vegen, pijltjestoetsen en spatie** om te bladeren en voor te lezen.
 - **Schermdimmer** voor als het echt donker moet.

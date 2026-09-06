@@ -646,15 +646,28 @@
 
   function toonGezongenVersie(gezongen) {
     const speler = $('gezongen-speler');
+    const download = $('knop-download-gezongen');
     verberg('gezongen-bezig');
     verberg('gezongen-fout');
     if (gezongen && staat.verhaal) {
-      speler.src = `/media/${staat.verhaal.id}/${gezongen.bestand}`;
+      const url = `/media/${staat.verhaal.id}/${gezongen.bestand}`;
+      speler.src = url;
       toon('gezongen-speler');
+      download.href = url;
+      download.download = `${bestandsveiligeNaam(staat.verhaal.titel)}.mp3`;
+      toon('knop-download-gezongen');
     } else {
       speler.removeAttribute('src');
       verberg('gezongen-speler');
+      verberg('knop-download-gezongen');
     }
+  }
+
+  function bestandsveiligeNaam(tekst) {
+    return (tekst || 'liedje')
+      .normalize('NFKD').replace(/[̀-ͯ]/g, '')  // accenten weg
+      .replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+      .toLowerCase() || 'liedje';
   }
 
   /* ---------------- Experimenteel: laten zingen via Lyria ---------------- */
@@ -664,18 +677,22 @@
     const verhaal = staat.verhaal;
     if (!verhaal || !verhaal.liedje) return;
     const knop = $('knop-zing-experimenteel');
+    const stijl = $('liedje-stijl').value;
+    const tekst = $('liedje-tekst').value;
     knop.disabled = true;
     verberg('gezongen-speler');
     verberg('gezongen-fout');
     toon('gezongen-bezig');
     try {
       const start = await api(`/api/verhalen/${verhaal.id}/liedje/zing`, {
-        method: 'POST', body: JSON.stringify({ vernieuw }),
+        method: 'POST', body: JSON.stringify({ vernieuw, stijl, tekst }),
       });
       const gezongen = start.status === 'klaar'
         ? start.gezongen
         : await volgZingTaak(start.taak_id);
       verhaal.liedje.gezongen = gezongen;
+      verhaal.liedje.stijl = stijl;
+      verhaal.liedje.tekst = tekst;
       toonGezongenVersie(gezongen);
       meld('Het is gelukt! 🎉 Lyria heeft het gezongen.', 'goed');
     } catch (fout) {
