@@ -57,6 +57,11 @@ IMAGE_MODEL = _env("IMAGE_MODEL", "gemini-2.5-flash-image")
 # Experimenteel: laat een liedje ook echt zingen via Google's Lyria. Staat
 # bij Google zelf nog in preview; werkt dus mogelijk niet op elk project.
 MUSIC_MODEL = _env("MUSIC_MODEL", "lyria-3-pro-preview")
+# Lyria staat (nog) niet overal waar de tekst- en beeldmodellen wel staan --
+# Google's eigen voorbeeldnotebook gebruikt hiervoor "global" in plaats van
+# een gewone regio zoals us-central1. Apart instelbaar, zodat een verkeerde
+# gok voor Lyria niet de rest van de app kan raken.
+MUSIC_LOCATION = _env("MUSIC_LOCATION", "global")
 
 # --- App --------------------------------------------------------------------
 APP_PIN = _env("APP_PIN")

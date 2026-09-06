@@ -92,6 +92,7 @@ class NepTts:
 
 
 gcp.genai_client = lambda: NepGenai()
+gcp.muziek_client = lambda: NepGenai()
 gcp.tts_client = lambda: NepTts()
 
 stappen = []
