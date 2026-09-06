@@ -15,6 +15,7 @@ T = TypeVar("T")
 
 _lock = threading.Lock()
 _genai_client: Any = None
+_muziek_client: Any = None
 _tts_client: Any = None
 
 
@@ -38,6 +39,35 @@ def genai_client():
             config.GCP_LOCATION,
         )
   return _genai_client
+
+
+def muziek_client():
+  """Aparte client voor Lyria (experimenteel), met zijn eigen locatie.
+
+  Lyria staat niet per se op dezelfde regio als de tekst- en
+  beeldmodellen -- vandaar een eigen client in plaats van hergebruik van
+  genai_client(), zodat een verkeerde locatie-gok hier niet de rest van de
+  app kan raken.
+  """
+  global _muziek_client
+  if _muziek_client is None:
+    with _lock:
+      if _muziek_client is None:
+        from google import genai
+
+        config.bootstrap_credentials()
+        _muziek_client = genai.Client(
+            vertexai=True,
+            project=config.GCP_PROJECT_ID,
+            location=config.MUSIC_LOCATION,
+        )
+        log.info(
+            "Muziekclient (Lyria, experimenteel) gestart (project=%s,"
+            " locatie=%s).",
+            config.GCP_PROJECT_ID,
+            config.MUSIC_LOCATION,
+        )
+  return _muziek_client
 
 
 def tts_client():

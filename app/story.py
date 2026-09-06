@@ -324,7 +324,7 @@ def genereer_gezongen_liedje(liedje: dict, verhaal_id: str) -> dict:
   )
 
   def _aanroep():
-    return gcp.genai_client().models.generate_content(
+    return gcp.muziek_client().models.generate_content(
         model=config.MUSIC_MODEL,
         contents=prompt,
         config=types.GenerateContentConfig(response_modalities=["AUDIO", "TEXT"]),

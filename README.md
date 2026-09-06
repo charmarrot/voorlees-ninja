@@ -78,6 +78,7 @@ python tests/rooktest.py
 | `TEXT_MODEL` | `gemini-2.5-flash` | Model dat het verhaal schrijft. |
 | `IMAGE_MODEL` | `gemini-2.5-flash-image` | Model dat de plaatjes tekent. |
 | `MUSIC_MODEL` | `lyria-3-pro-preview` | Experimenteel: model voor de gezongen liedjesversie. Staat bij Google nog in preview. |
+| `MUSIC_LOCATION` | `global` | Locatie voor de muziekclient. Lyria staat (nog) niet in elke regio; `global` is wat Google's eigen voorbeeld gebruikt. |
 | `APP_PIN` | leeg | Gedeelde pincode. Leeg = iedereen mag erbij. |
 | `SECRET_KEY` | willekeurig | Ondertekent de inlogcookie. Zonder vaste waarde moet je na elke herstart opnieuw inloggen. |
 | `SESSION_DAYS` | `60` | Hoe lang een tablet ingelogd blijft. |
