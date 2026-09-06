@@ -38,12 +38,15 @@ class NepModellen:
       return NepAntwoord(beeld=True)
     if contents and str(contents[0]).startswith("Titel van het verhaal:"):
       AANROEPEN["liedje"] += 1
-      return NepAntwoord(tekst=json.dumps({
-          "titel": "Slaap zacht, Leo",
-          "stijl": "soft Dutch lullaby, gentle guitar, warm voice, slow 6/8",
-          "tekst": "[Intro]\nSssst\n\n[Vers 1]\nLeo rijdt door de nacht\n"
-                   "\n[Refrein]\nSlaap zacht, Leo, slaap zacht\n",
-      }))
+      # Gemini geeft voor meerregelige tekst vaak LETTERLIJKE regeleinden
+      # terug in plaats van het escape-teken \n -- ongeldig voor
+      # json.loads(strict=True), en precies wat _parse_json moet verdragen.
+      return NepAntwoord(tekst=(
+          '{"titel": "Slaap zacht, Leo",'
+          ' "stijl": "soft Dutch lullaby, gentle guitar, warm voice, slow 6/8",'
+          ' "tekst": "[Intro]\nSssst\n\n[Vers 1]\nLeo rijdt door de nacht\n'
+          '\n[Refrein]\nSlaap zacht, Leo, slaap zacht\n"}'
+      ))
     if contents and contents[0] == "Verzin nieuwe ideeën.":
       AANROEPEN["suggesties"] += 1
       return NepAntwoord(tekst=json.dumps({"suggesties": [

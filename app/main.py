@@ -255,7 +255,7 @@ async def verhalen():
 async def verhaal(verhaal_id: str):
   try:
     gevonden = story.lees_verhaal(verhaal_id)
-  except ValueError:
+  except story.OngeldigVerhaalId:
     raise HTTPException(status_code=400, detail="Ongeldig verhaal-id")
   if not gevonden:
     raise HTTPException(status_code=404, detail="Verhaaltje niet gevonden")
@@ -271,7 +271,7 @@ async def favoriet(verhaal_id: str, gegevens: dict = Body(default={})):
     bijgewerkt = story.markeer_favoriet(
         verhaal_id, bool(gegevens.get("favoriet", True))
     )
-  except ValueError:
+  except story.OngeldigVerhaalId:
     raise HTTPException(status_code=400, detail="Ongeldig verhaal-id")
   if not bijgewerkt:
     raise HTTPException(status_code=404, detail="Verhaaltje niet gevonden")
@@ -287,7 +287,7 @@ async def liedje(verhaal_id: str, gegevens: dict = Body(default={})):
   vernieuw = bool(gegevens.get("vernieuw"))
   try:
     gevonden = await asyncio.to_thread(story.liedje_voor, verhaal_id, vernieuw)
-  except ValueError:
+  except story.OngeldigVerhaalId:
     raise HTTPException(status_code=400, detail="Ongeldig verhaal-id")
   except Exception as exc:  # noqa: BLE001
     log.exception("Liedje schrijven mislukt")
@@ -303,7 +303,7 @@ async def liedje(verhaal_id: str, gegevens: dict = Body(default={})):
 async def verwijder(verhaal_id: str):
   try:
     weg = story.verwijder_verhaal(verhaal_id)
-  except ValueError:
+  except story.OngeldigVerhaalId:
     raise HTTPException(status_code=400, detail="Ongeldig verhaal-id")
   if not weg:
     raise HTTPException(status_code=404, detail="Verhaaltje niet gevonden")
@@ -367,7 +367,7 @@ async def media(verhaal_id: str, bestand: str):
     raise HTTPException(status_code=400, detail="Ongeldige bestandsnaam")
   try:
     pad: Path = story.verhaal_map(verhaal_id) / bestand
-  except ValueError:
+  except story.OngeldigVerhaalId:
     raise HTTPException(status_code=400, detail="Ongeldig verhaal-id")
   if not pad.is_file():
     raise HTTPException(status_code=404, detail="Bestand niet gevonden")
