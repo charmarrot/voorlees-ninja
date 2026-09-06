@@ -54,6 +54,9 @@ GCP_PROJECT_ID = _env("GCP_PROJECT_ID", "voorlees-ninja-506310")
 GCP_LOCATION = _env("GCP_LOCATION", "us-central1")
 TEXT_MODEL = _env("TEXT_MODEL", "gemini-2.5-flash")
 IMAGE_MODEL = _env("IMAGE_MODEL", "gemini-2.5-flash-image")
+# Experimenteel: laat een liedje ook echt zingen via Google's Lyria. Staat
+# bij Google zelf nog in preview; werkt dus mogelijk niet op elk project.
+MUSIC_MODEL = _env("MUSIC_MODEL", "lyria-3-pro-preview")
 
 # --- App --------------------------------------------------------------------
 APP_PIN = _env("APP_PIN")

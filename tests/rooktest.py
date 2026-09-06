@@ -28,6 +28,7 @@ for pad in ("/api/verhalen", "/api/profiel", "/api/suggesties",
     assert c.get(pad).status_code == 401, pad
 assert c.post("/api/genereer", json={"prompt": "test"}).status_code == 401
 assert c.post("/api/verhalen/abc/liedje", json={}).status_code == 401
+assert c.post("/api/verhalen/abc/liedje/zing", json={}).status_code == 401
 print("✓ pincode beschermt api en media")
 
 # 2b. Het vibecode-log moet juist WEL zonder pincode bereikbaar zijn
@@ -112,6 +113,39 @@ assert taak["status"] == "mislukt", taak
 assert "quotum" in taak["fout"].lower(), taak
 assert c.get("/api/liedje-taken/onbestaand").status_code == 404
 print("✓ liedje: draait op de achtergrond, blokkeert niet en meldt nette fouten")
+
+# 6a2. Zingen (experimenteel): vereist eerst een songtekst, en draait net zo
+# goed op de achtergrond -- ook dit is een onzekere, mogelijk trage aanroep.
+assert c.post(f"/api/verhalen/{vid}/liedje/zing", json={}).status_code == 400
+
+def _wel_een_liedje(*a, **k):
+    return {"titel": "Slaap zacht", "stijl": "x", "tekst": "[Intro]\nx\n\n[Refrein]\ny",
+            "gemaakt_op": "2026-01-01T00:00:00+00:00"}
+story.genereer_liedje = _wel_een_liedje
+schrijf = c.post(f"/api/verhalen/{vid}/liedje", json={})
+_, geschreven = _wacht_op_taak(f"/api/liedje-taken/{schrijf.json()['taak_id']}")
+assert geschreven["status"] == "klaar", geschreven
+
+def _traag_gezongen(*a, **k):
+    time.sleep(0.05)
+    return {"bestand": "liedje_gezongen.wav", "mime": "audio/wav",
+            "gemaakt_op": "2026-01-01T00:00:00+00:00"}
+story.genereer_gezongen_liedje = _traag_gezongen
+
+begin = time.monotonic()
+start_zing = c.post(f"/api/verhalen/{vid}/liedje/zing", json={})
+duur_zing = time.monotonic() - begin
+assert start_zing.status_code == 200 and "taak_id" in start_zing.json(), start_zing.json()
+assert duur_zing < 0.05, f"POST /liedje/zing blokkeerde {duur_zing:.3f}s op de trage aanroep"
+
+_, taak_zing = _wacht_op_taak(f"/api/liedje-taken/{start_zing.json()['taak_id']}")
+assert taak_zing["status"] == "klaar", taak_zing
+assert taak_zing["gezongen"]["bestand"] == "liedje_gezongen.wav", taak_zing
+
+# Tweede keer opvragen kost geen nieuwe Lyria-aanroep, en komt meteen terug.
+opnieuw = c.post(f"/api/verhalen/{vid}/liedje/zing", json={})
+assert opnieuw.status_code == 200 and opnieuw.json()["status"] == "klaar", opnieuw.json()
+print("✓ zingen (experimenteel): vereist songtekst, blokkeert niet en cachet het resultaat")
 
 # 6b. Suggesties: achter de pincode, en netjes terugvallen als Google faalt
 def _stuk(*a, **k):

@@ -239,6 +239,20 @@
 
       <button class="knop knop-hoofd knop-vol" id="knop-kopieer-liedje" type="button">📋 Kopieer de songtekst</button>
       <button class="knop knop-vol" style="margin-top:8px" id="knop-nieuw-liedje" type="button">↻ Schrijf een ander liedje</button>
+
+      <div class="experiment-scheiding"></div>
+      <button class="knop knop-vol" id="knop-zing-experimenteel" type="button">🧪 Probeer gezongen versie (experimenteel)</button>
+      <p class="experiment-uitleg">
+        Nieuw bij Google en nog niet volledig getest: dit model staat nog in
+        preview, ondersteunt mogelijk geen Nederlandse zang en kan
+        mislukken. De songtekst hierboven blijft gewoon werken in Suno.
+      </p>
+      <div id="gezongen-bezig" class="liedje-bezig verborgen">
+        <div class="noot">🎼</div>
+        <p>Lyria probeert het te zingen… dit kan een minuutje duren.</p>
+      </div>
+      <p id="gezongen-fout" class="experiment-fout verborgen"></p>
+      <audio id="gezongen-speler" class="verborgen" controls style="width:100%"></audio>
     </div>
 
     <button class="knop knop-vol knop-stil" style="margin-top:8px" id="knop-sluit-liedje" type="button">Sluiten</button>

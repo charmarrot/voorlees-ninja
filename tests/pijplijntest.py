@@ -13,8 +13,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app import gcp, story  # noqa: E402
 
 AANROEPEN = {"tekst": 0, "beeld": 0, "beeld_met_referentie": 0, "audio": 0,
-             "suggesties": 0, "liedje": 0}
+             "suggesties": 0, "liedje": 0, "gezongen": 0}
 PNG = b"\x89PNG\r\n\x1a\nnepplaatje"
+GEZONGEN_INSTELLING = {"mislukken": False}
 
 
 class NepDeel:
@@ -36,6 +37,19 @@ class NepModellen:
       if any(not isinstance(deel, str) for deel in contents):
         AANROEPEN["beeld_met_referentie"] += 1
       return NepAntwoord(beeld=True)
+    if "lyria" in model:
+      AANROEPEN["gezongen"] += 1
+      if GEZONGEN_INSTELLING["mislukken"]:
+        deel = types.SimpleNamespace(inline_data=None)
+      else:
+        # Ruwe PCM, zoals Lyria (en Gemini's andere audio-antwoorden) vaak
+        # teruggeven -- precies het geval dat de WAV-header zelf moet
+        # worden opgebouwd.
+        ruwe_pcm = b"\x11\x22" * 4000
+        deel = types.SimpleNamespace(inline_data=types.SimpleNamespace(
+            data=ruwe_pcm, mime_type="audio/L16;rate=24000"))
+      inhoud = types.SimpleNamespace(parts=[deel])
+      return types.SimpleNamespace(candidates=[types.SimpleNamespace(content=inhoud)])
     if contents and str(contents[0]).startswith("Titel van het verhaal:"):
       AANROEPEN["liedje"] += 1
       # Gemini geeft voor meerregelige tekst vaak LETTERLIJKE regeleinden
@@ -123,6 +137,41 @@ opnieuw = story.liedje_voor(vid, vernieuw=True)
 assert AANROEPEN["liedje"] == 2 and opnieuw["tekst"] == lied["tekst"]
 assert story.liedje_voor("bestaat-niet-hier") is None
 print("✓ slaapliedje geschreven, bewaard en op verzoek herschreven")
+
+# Experimenteel: het liedje laten zingen via Lyria. Kan pas als er al een
+# songtekst is; wat Lyria teruggeeft (ruwe PCM) moet zelf in een afspeelbare
+# WAV verpakt worden.
+import wave  # noqa: E402
+
+geen_tekst_nog = story.gezongen_liedje_voor("een-verhaal-zonder-liedje")
+assert geen_tekst_nog is None
+
+gezongen = story.gezongen_liedje_voor(vid)
+assert gezongen["bestand"] == "liedje_gezongen.wav" and gezongen["mime"] == "audio/wav"
+assert AANROEPEN["gezongen"] == 1
+wav_pad = map_pad / gezongen["bestand"]
+assert wav_pad.is_file()
+with wave.open(str(wav_pad), "rb") as w:
+  assert w.getframerate() == 24000, w.getframerate()
+  assert w.getnchannels() == 1
+  assert w.getsampwidth() == 2
+  assert w.getnframes() == 4000, w.getnframes()  # 8000 bytes / 2 bytes per sample
+assert story.lees_verhaal(vid)["liedje"]["gezongen"]["bestand"] == gezongen["bestand"]
+
+nogmaals_gezongen = story.gezongen_liedje_voor(vid)
+assert AANROEPEN["gezongen"] == 1, "gezongen versie werd onnodig opnieuw gemaakt"
+opnieuw_gezongen = story.gezongen_liedje_voor(vid, vernieuw=True)
+assert AANROEPEN["gezongen"] == 2
+print("✓ experimenteel: ruwe PCM van Lyria wordt een geldige, afspeelbare WAV")
+
+GEZONGEN_INSTELLING["mislukken"] = True
+try:
+  story.gezongen_liedje_voor(vid, vernieuw=True)
+  raise AssertionError("had moeten mislukken: Lyria gaf geen audio terug")
+except RuntimeError as fout:
+  assert "geen audio" in str(fout).lower(), fout
+GEZONGEN_INSTELLING["mislukken"] = False
+print("✓ experimenteel: nette fout als Lyria geen audio teruggeeft")
 
 # Suggesties: één keer verzinnen, daarna uit de cache.
 eerste = story.lees_suggesties()
