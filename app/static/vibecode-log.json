@@ -3,9 +3,16 @@
   "project": "Voorlees Ninja",
   "domein": "voorlees.ninjageit.nl",
   "omschrijving": "Webapp die met Gemini en Cloud Text-to-Speech elke avond een nieuw bedtijdverhaaltje schrijft, tekent en voorleest.",
-  "bijgewerkt": "2026-09-06T18:22:41+00:00",
-  "aantal": 5,
+  "bijgewerkt": "2026-09-06T20:25:03+00:00",
+  "aantal": 6,
   "entries": [
+    {
+      "datum": "2026-09-06",
+      "titel": "Betere diagnose bij \"Er ging iets mis\" en ruimer tokenbudget voor liedjes",
+      "commit": "7a29b57",
+      "bestanden": 2,
+      "regels": 20
+    },
     {
       "datum": "2026-09-06",
       "titel": "Fix: liedje maken gaf ten onrechte \"Ongeldig verhaal-id\"",
