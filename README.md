@@ -28,6 +28,12 @@ slaapkamer.
   songtekst van met `[Vers]`- en `[Refrein]`-blokken, plus een Engelse
   stijlregel. Beide met één tik te kopiëren en zo in Suno of Gemini met
   muziek te plakken. Het liedje wordt bij het verhaal bewaard.
+- **Experimenteel: laat het liedje zelf zingen** via Google's Lyria
+  (`🧪 Probeer gezongen versie`, onder de songtekst). Dit model staat bij
+  Google zelf nog in preview: het is onbevestigd of het project er toegang
+  toe heeft, of het Nederlands zingt, en wat het kost. Mislukt het, dan
+  blijft de songtekst hierboven gewoon bruikbaar in Suno — dit is puur een
+  bonus als het werkt.
 - **Boekenplank** met alle eerdere verhaaltjes, favorieten bovenaan.
 - **Vegen, pijltjestoetsen en spatie** om te bladeren en voor te lezen.
 - **Schermdimmer** voor als het echt donker moet.
@@ -71,6 +77,7 @@ python tests/rooktest.py
 | `GCP_LOCATION` | `us-central1` | Vertex AI-regio. |
 | `TEXT_MODEL` | `gemini-2.5-flash` | Model dat het verhaal schrijft. |
 | `IMAGE_MODEL` | `gemini-2.5-flash-image` | Model dat de plaatjes tekent. |
+| `MUSIC_MODEL` | `lyria-3-pro-preview` | Experimenteel: model voor de gezongen liedjesversie. Staat bij Google nog in preview. |
 | `APP_PIN` | leeg | Gedeelde pincode. Leeg = iedereen mag erbij. |
 | `SECRET_KEY` | willekeurig | Ondertekent de inlogcookie. Zonder vaste waarde moet je na elke herstart opnieuw inloggen. |
 | `SESSION_DAYS` | `60` | Hoe lang een tablet ingelogd blijft. |

@@ -7,6 +7,7 @@ import logging
 import re
 import secrets
 import shutil
+import struct
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -264,6 +265,111 @@ Geef UITSLUITEND geldig JSON terug:
       "tekst": tekst,
       "gemaakt_op": datetime.now(timezone.utc).isoformat(timespec="seconds"),
   }
+
+
+def _wav_header(pcm_lengte: int, samplerate: int, kanalen: int = 1, bits: int = 16) -> bytes:
+  """Bouwt een WAV-header voor ruwe PCM-audio, met de exacte lengte erin."""
+  block_align = kanalen * bits // 8
+  byte_rate = samplerate * block_align
+  return struct.pack(
+      "<4sI4s4sIHHIIHH4sI",
+      b"RIFF", 36 + pcm_lengte, b"WAVE", b"fmt ", 16, 1, kanalen,
+      samplerate, byte_rate, block_align, bits, b"data", pcm_lengte,
+  )
+
+
+def _bewaar_gezongen_audio(data: bytes, mime_type: str, verhaal_id: str) -> tuple[str, str]:
+  """Bewaart wat Lyria teruggeeft; verpakt ruwe PCM in een WAV-header.
+
+  Sommige Gemini-audio-antwoorden komen terug als kale PCM-samples (bv.
+  "audio/L16;rate=24000") in plaats van een afspeelbaar bestand. Zonder
+  header speelt geen enkele browser dat af, dus die zetten we er zelf op.
+  """
+  mime_type = (mime_type or "").lower()
+  map_pad = verhaal_map(verhaal_id)
+
+  if "wav" in mime_type:
+    bestand, uiteindelijke_mime = "liedje_gezongen.wav", "audio/wav"
+  elif "mpeg" in mime_type or "mp3" in mime_type:
+    bestand, uiteindelijke_mime = "liedje_gezongen.mp3", "audio/mpeg"
+  elif "ogg" in mime_type:
+    bestand, uiteindelijke_mime = "liedje_gezongen.ogg", "audio/ogg"
+  else:
+    samplerate_match = re.search(r"rate=(\d+)", mime_type)
+    samplerate = int(samplerate_match.group(1)) if samplerate_match else 24000
+    data = _wav_header(len(data), samplerate) + data
+    bestand, uiteindelijke_mime = "liedje_gezongen.wav", "audio/wav"
+
+  (map_pad / bestand).write_bytes(data)
+  return bestand, uiteindelijke_mime
+
+
+def genereer_gezongen_liedje(liedje: dict, verhaal_id: str) -> dict:
+  """Experimenteel: laat Lyria de songtekst daadwerkelijk zingen.
+
+  Lyria staat bij Google zelf nog in preview op ons toegangspad; noch
+  Nederlandse zangondersteuning, noch de prijs staat vast. Mislukt dit,
+  dan blijft de songtekst gewoon bruikbaar om zelf in Suno te plakken --
+  daarom hier bewust maar één poging (geen kostbare retries op iets
+  onzekers) en een dubbelzinnige fout meteen doorgestuurd.
+  """
+  from google.genai import types
+
+  prompt = (
+      "Sing this Dutch lullaby exactly as written, treating the bracketed"
+      " markers like [Vers 1] and [Refrein] as musical sections (verse,"
+      " chorus, bridge). Keep it soft and slow, suitable for a toddler"
+      f" falling asleep. Style: {liedje.get('stijl', '')}\n\n"
+      f"Lyrics:\n{liedje.get('tekst', '')}"
+  )
+
+  def _aanroep():
+    return gcp.genai_client().models.generate_content(
+        model=config.MUSIC_MODEL,
+        contents=prompt,
+        config=types.GenerateContentConfig(response_modalities=["AUDIO", "TEXT"]),
+    )
+
+  antwoord = gcp.with_retries(
+      _aanroep, pogingen=1, omschrijving="Liedje laten zingen (experimenteel)"
+  )
+
+  for kandidaat in antwoord.candidates or []:
+    for deel in (kandidaat.content.parts if kandidaat.content else []) or []:
+      data = getattr(deel, "inline_data", None)
+      if data and data.data and (data.mime_type or "").startswith("audio/"):
+        bestand, mime = _bewaar_gezongen_audio(data.data, data.mime_type, verhaal_id)
+        return {
+            "bestand": bestand,
+            "mime": mime,
+            "gemaakt_op": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        }
+
+  raise RuntimeError(
+      "Lyria gaf geen audio terug. Mogelijk heeft dit project nog geen"
+      " toegang tot dit preview-model, of het ondersteunt geen Nederlandse"
+      " zang. De songtekst hierboven werkt gewoon in Suno."
+  )
+
+
+def gezongen_liedje_voor(verhaal_id: str, vernieuw: bool = False) -> dict | None:
+  """Haalt de bewaarde gezongen versie op, of laat Lyria er een maken.
+
+  Geeft None als het verhaal of de songtekst (nog) niet bestaat -- zing
+  kan pas nadat er een liedje is geschreven.
+  """
+  verhaal = lees_verhaal(verhaal_id)
+  if not verhaal or not verhaal.get("liedje"):
+    return None
+
+  bestaand = verhaal["liedje"].get("gezongen")
+  if bestaand and not vernieuw:
+    return bestaand
+
+  gezongen = genereer_gezongen_liedje(verhaal["liedje"], verhaal_id)
+  verhaal["liedje"]["gezongen"] = gezongen
+  _bewaar(verhaal)
+  return gezongen
 
 
 def liedje_voor(verhaal_id: str, vernieuw: bool = False) -> dict | None:

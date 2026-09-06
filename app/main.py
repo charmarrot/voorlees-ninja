@@ -145,6 +145,33 @@ def _draai_liedje_taak(taak_id: str, verhaal_id: str, vernieuw: bool) -> None:
     _ruim_liedje_taken_op()
 
 
+def _draai_gezongen_taak(taak_id: str, verhaal_id: str, vernieuw: bool) -> None:
+  """Experimenteel: probeert het liedje via Lyria te laten zingen.
+
+  Deelt dezelfde taakregistratie als het schrijven van de songtekst -- het
+  is dezelfde soort achtergrondwerk (een trage, onzekere Gemini-aanroep),
+  en dat houdt ook meteen maar één Google-aanroep tegelijk vanuit dit deel
+  van de app.
+  """
+  _zet_liedje_taak(taak_id, status="bezig")
+  try:
+    gezongen = story.gezongen_liedje_voor(verhaal_id, vernieuw)
+    if gezongen is None:
+      _zet_liedje_taak(
+          taak_id, status="mislukt",
+          fout="Maak eerst de songtekst, voor je 'm laat zingen.",
+      )
+    else:
+      _zet_liedje_taak(taak_id, status="klaar", gezongen=gezongen)
+  except story.OngeldigVerhaalId:
+    _zet_liedje_taak(taak_id, status="mislukt", fout="Ongeldig verhaal-id")
+  except Exception as exc:  # noqa: BLE001
+    log.exception("Liedje laten zingen mislukt (experimenteel)")
+    _zet_liedje_taak(taak_id, status="mislukt", fout=_leesbare_fout(exc))
+  finally:
+    _ruim_liedje_taken_op()
+
+
 def _leesbare_fout(exc: Exception) -> str:
   tekst = str(exc) or exc.__class__.__name__
   laag = tekst.lower()
@@ -354,6 +381,43 @@ async def liedje(verhaal_id: str, gegevens: dict = Body(default={})):
       gestart=datetime.now(timezone.utc).isoformat(timespec="seconds"),
   )
   _liedje_werker.submit(_draai_liedje_taak, taak_id, verhaal_id, vernieuw)
+  return {"status": "bezig", "taak_id": taak_id}
+
+
+@app.post(
+    "/api/verhalen/{verhaal_id}/liedje/zing",
+    dependencies=[Depends(auth.vereis_toegang)],
+)
+async def liedje_zingen(verhaal_id: str, gegevens: dict = Body(default={})):
+  """Experimenteel: probeert de songtekst echt te laten zingen via Lyria.
+
+  Lyria staat bij Google zelf nog in preview op ons toegangspad, en noch
+  Nederlandse zangondersteuning noch de prijs staat vast -- vandaar
+  duidelijk als experiment in de app. Mislukt het, dan blijft de gewone
+  songtekst gewoon bruikbaar om zelf in Suno te plakken.
+  """
+  vernieuw = bool(gegevens.get("vernieuw"))
+  try:
+    verhaal = story.lees_verhaal(verhaal_id)
+  except story.OngeldigVerhaalId:
+    raise HTTPException(status_code=400, detail="Ongeldig verhaal-id")
+  if not verhaal:
+    raise HTTPException(status_code=404, detail="Verhaaltje niet gevonden")
+  if not verhaal.get("liedje"):
+    raise HTTPException(
+        status_code=400, detail="Maak eerst de songtekst, voor je 'm laat zingen."
+    )
+  bestaand = verhaal["liedje"].get("gezongen")
+  if bestaand and not vernieuw:
+    return {"status": "klaar", "gezongen": bestaand}
+
+  taak_id = secrets.token_hex(8)
+  _zet_liedje_taak(
+      taak_id,
+      status="wachtrij",
+      gestart=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+  )
+  _liedje_werker.submit(_draai_gezongen_taak, taak_id, verhaal_id, vernieuw)
   return {"status": "bezig", "taak_id": taak_id}
 
 

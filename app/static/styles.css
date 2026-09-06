@@ -520,6 +520,26 @@ input[type="range"] { width: 100%; accent-color: var(--maan); height: 34px; }
 /* ---------- Slaapliedje ---------- */
 .liedje-bezig { text-align: center; padding: 26px 10px; color: var(--inkt-zacht); }
 .liedje-bezig .noot { font-size: 2.6rem; animation: zweef 3s ease-in-out infinite; }
+.experiment-scheiding {
+  border-top: 1px dashed var(--rand);
+  margin: 18px 0 14px;
+}
+.experiment-uitleg {
+  font-size: .82rem;
+  color: var(--inkt-dof);
+  margin: 8px 2px 14px;
+  line-height: 1.5;
+}
+.experiment-fout {
+  font-size: .88rem;
+  line-height: 1.5;
+  color: #ffd9d7;
+  background: rgba(224, 115, 111, .12);
+  border: 1px solid rgba(224, 115, 111, .4);
+  border-radius: var(--radius-klein);
+  padding: 12px 14px;
+  margin-top: 4px;
+}
 .kopieerrij { display: flex; gap: 8px; align-items: stretch; }
 .kopieerrij .stijlveld { flex: 1; min-width: 0; min-height: 0; resize: none; }
 .kopieerknop {

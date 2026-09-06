@@ -641,6 +641,73 @@
     $('liedje-tekst').value = liedje.tekst || '';
     verberg('liedje-bezig');
     toon('liedje-inhoud');
+    toonGezongenVersie(liedje.gezongen);
+  }
+
+  function toonGezongenVersie(gezongen) {
+    const speler = $('gezongen-speler');
+    verberg('gezongen-bezig');
+    verberg('gezongen-fout');
+    if (gezongen && staat.verhaal) {
+      speler.src = `/media/${staat.verhaal.id}/${gezongen.bestand}`;
+      toon('gezongen-speler');
+    } else {
+      speler.removeAttribute('src');
+      verberg('gezongen-speler');
+    }
+  }
+
+  /* ---------------- Experimenteel: laten zingen via Lyria ---------------- */
+  $('knop-zing-experimenteel').addEventListener('click', () => probeerZingen());
+
+  async function probeerZingen({ vernieuw = false } = {}) {
+    const verhaal = staat.verhaal;
+    if (!verhaal || !verhaal.liedje) return;
+    const knop = $('knop-zing-experimenteel');
+    knop.disabled = true;
+    verberg('gezongen-speler');
+    verberg('gezongen-fout');
+    toon('gezongen-bezig');
+    try {
+      const start = await api(`/api/verhalen/${verhaal.id}/liedje/zing`, {
+        method: 'POST', body: JSON.stringify({ vernieuw }),
+      });
+      const gezongen = start.status === 'klaar'
+        ? start.gezongen
+        : await volgZingTaak(start.taak_id);
+      verhaal.liedje.gezongen = gezongen;
+      toonGezongenVersie(gezongen);
+      meld('Het is gelukt! 🎉 Lyria heeft het gezongen.', 'goed');
+    } catch (fout) {
+      // Deze foutmelding is bewust uitgebreid (legt uit wat er waarschijnlijk
+      // aan de hand is), dus die toont beter rustig in het paneel dan als
+      // een voorbijflitsende toast die het hele scherm overdondert.
+      verberg('gezongen-bezig');
+      $('gezongen-fout').textContent = `Zingen lukte (nog) niet: ${fout.message}`;
+      toon('gezongen-fout');
+    } finally {
+      knop.disabled = false;
+    }
+  }
+
+  function volgZingTaak(taakId) {
+    return new Promise((resolve, reject) => {
+      const interval = setInterval(async () => {
+        try {
+          const taak = await api(`/api/liedje-taken/${taakId}`);
+          if (taak.status === 'klaar') {
+            clearInterval(interval);
+            resolve(taak.gezongen);
+          } else if (taak.status === 'mislukt') {
+            clearInterval(interval);
+            reject(new Error(taak.fout || 'Lyria kon het niet zingen.'));
+          }
+        } catch (fout) {
+          clearInterval(interval);
+          reject(fout);
+        }
+      }, 2000);
+    });
   }
 
   async function kopieer(tekst, knop, gelukt) {
