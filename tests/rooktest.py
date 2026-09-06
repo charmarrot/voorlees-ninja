@@ -2,7 +2,7 @@
 
 Draaien vanuit de projectmap:  python tests/rooktest.py
 """
-import json, os, shutil, sys, tempfile
+import json, os, shutil, sys, tempfile, time
 from pathlib import Path
 
 tijdelijk = tempfile.mkdtemp(prefix="voorlees-test-")
@@ -82,15 +82,36 @@ for slecht in ("/media/..%2F..%2Fetc/passwd", f"/media/{vid}/../verhaal.json",
 assert c.get("/api/verhalen/../../etc").status_code in (400, 404)
 print("✓ padtrucs geblokkeerd")
 
-# 6a. Liedje: onbekend verhaal geeft 404, kapotte Google-aanroep geen 500
+# 6a. Liedje: draait op de achtergrond, net als het verhaal zelf -- een
+# trage of falende Google-aanroep mag de HTTP-verbinding nooit openhouden
+# (dat gaf eerder een kale 502 via de proxy in plaats van een echte melding).
+def _wacht_op_taak(pad, pogingen=100, tussenpoos=0.02):
+    for _ in range(pogingen):
+        r = c.get(pad)
+        data = r.json()
+        if data.get("status") in ("klaar", "mislukt"):
+            return r, data
+        time.sleep(tussenpoos)
+    raise AssertionError(f"Taak op {pad} werd niet op tijd afgerond: {data}")
+
 assert c.post(f"/api/verhalen/{vid}-bestaat-niet/liedje", json={}).status_code == 404
-def _geen_muziek(*a, **k):
+
+def _langzaam_en_kapot(*a, **k):
+    time.sleep(0.05)  # bootst een trage Google-aanroep na
     raise RuntimeError("quota bereikt")
-story.genereer_liedje = _geen_muziek
-mislukt = c.post(f"/api/verhalen/{vid}/liedje", json={})
-assert mislukt.status_code == 502, mislukt.status_code
-assert "quotum" in mislukt.json()["detail"].lower(), mislukt.json()
-print("✓ liedje: nette foutmeldingen bij onbekend verhaal en falende Google")
+story.genereer_liedje = _langzaam_en_kapot
+
+begin = time.monotonic()
+start = c.post(f"/api/verhalen/{vid}/liedje", json={})
+duur = time.monotonic() - begin
+assert start.status_code == 200 and "taak_id" in start.json(), start.json()
+assert duur < 0.05, f"POST /liedje blokkeerde {duur:.3f}s op de trage aanroep"
+
+_, taak = _wacht_op_taak(f"/api/liedje-taken/{start.json()['taak_id']}")
+assert taak["status"] == "mislukt", taak
+assert "quotum" in taak["fout"].lower(), taak
+assert c.get("/api/liedje-taken/onbestaand").status_code == 404
+print("✓ liedje: draait op de achtergrond, blokkeert niet en meldt nette fouten")
 
 # 6b. Suggesties: achter de pincode, en netjes terugvallen als Google faalt
 def _stuk(*a, **k):
