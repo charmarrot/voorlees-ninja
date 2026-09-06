@@ -126,9 +126,11 @@ schrijf = c.post(f"/api/verhalen/{vid}/liedje", json={})
 _, geschreven = _wacht_op_taak(f"/api/liedje-taken/{schrijf.json()['taak_id']}")
 assert geschreven["status"] == "klaar", geschreven
 
+GEZONGEN_TELLER = {"n": 0}
 def _traag_gezongen(*a, **k):
     time.sleep(0.05)
-    return {"bestand": "liedje_gezongen.wav", "mime": "audio/wav",
+    GEZONGEN_TELLER["n"] += 1
+    return {"bestand": "liedje_gezongen.mp3", "mime": "audio/mpeg",
             "gemaakt_op": "2026-01-01T00:00:00+00:00"}
 story.genereer_gezongen_liedje = _traag_gezongen
 
@@ -140,12 +142,23 @@ assert duur_zing < 0.05, f"POST /liedje/zing blokkeerde {duur_zing:.3f}s op de t
 
 _, taak_zing = _wacht_op_taak(f"/api/liedje-taken/{start_zing.json()['taak_id']}")
 assert taak_zing["status"] == "klaar", taak_zing
-assert taak_zing["gezongen"]["bestand"] == "liedje_gezongen.wav", taak_zing
+assert taak_zing["gezongen"]["bestand"] == "liedje_gezongen.mp3", taak_zing
+assert GEZONGEN_TELLER["n"] == 1
 
 # Tweede keer opvragen kost geen nieuwe Lyria-aanroep, en komt meteen terug.
 opnieuw = c.post(f"/api/verhalen/{vid}/liedje/zing", json={})
 assert opnieuw.status_code == 200 and opnieuw.json()["status"] == "klaar", opnieuw.json()
-print("✓ zingen (experimenteel): vereist songtekst, blokkeert niet en cachet het resultaat")
+assert GEZONGEN_TELLER["n"] == 1, "cache had gebruikt moeten worden"
+
+# Aangepaste tekst meesturen forceert wel een nieuwe poging, ook zonder
+# vernieuw=True -- een edit negeren zou verwarrend zijn.
+aangepast_zing = c.post(f"/api/verhalen/{vid}/liedje/zing",
+                         json={"tekst": "[Intro]\naangepaste tekst\n\n[Refrein]\nx"})
+assert aangepast_zing.status_code == 200 and "taak_id" in aangepast_zing.json()
+_, taak_aangepast = _wacht_op_taak(f"/api/liedje-taken/{aangepast_zing.json()['taak_id']}")
+assert taak_aangepast["status"] == "klaar", taak_aangepast
+assert GEZONGEN_TELLER["n"] == 2, "aangepaste tekst had een nieuwe poging moeten forceren"
+print("✓ zingen (experimenteel): vereist songtekst, blokkeert niet, cachet en herkent edits")
 
 # 6b. Suggesties: achter de pincode, en netjes terugvallen als Google faalt
 def _stuk(*a, **k):

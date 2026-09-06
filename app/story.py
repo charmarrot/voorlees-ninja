@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import io
 import json
 import logging
 import re
 import secrets
 import shutil
-import struct
 import time
+import wave
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
@@ -267,41 +268,48 @@ Geef UITSLUITEND geldig JSON terug:
   }
 
 
-def _wav_header(pcm_lengte: int, samplerate: int, kanalen: int = 1, bits: int = 16) -> bytes:
-  """Bouwt een WAV-header voor ruwe PCM-audio, met de exacte lengte erin."""
-  block_align = kanalen * bits // 8
-  byte_rate = samplerate * block_align
-  return struct.pack(
-      "<4sI4s4sIHHIIHH4sI",
-      b"RIFF", 36 + pcm_lengte, b"WAVE", b"fmt ", 16, 1, kanalen,
-      samplerate, byte_rate, block_align, bits, b"data", pcm_lengte,
-  )
+def _pcm_naar_mp3(pcm: bytes, samplerate: int, kanalen: int = 1) -> bytes:
+  """Zet ruwe 16-bit PCM om naar een echt, overal deelbaar mp3-bestand."""
+  import lameenc
+
+  encoder = lameenc.Encoder()
+  encoder.set_bit_rate(128)
+  encoder.set_in_sample_rate(samplerate)
+  encoder.set_channels(kanalen)
+  encoder.set_quality(2)
+  return encoder.encode(pcm) + encoder.flush()
 
 
 def _bewaar_gezongen_audio(data: bytes, mime_type: str, verhaal_id: str) -> tuple[str, str]:
-  """Bewaart wat Lyria teruggeeft; verpakt ruwe PCM in een WAV-header.
+  """Bewaart wat Lyria teruggeeft, altijd als een echt mp3-bestand.
 
   Sommige Gemini-audio-antwoorden komen terug als kale PCM-samples (bv.
-  "audio/L16;rate=24000") in plaats van een afspeelbaar bestand. Zonder
-  header speelt geen enkele browser dat af, dus die zetten we er zelf op.
+  "audio/L16;rate=24000") in plaats van een afspeelbaar bestand, andere als
+  WAV. Beide worden hier naar mp3 omgezet, zodat er altijd een klein,
+  overal afspeelbaar en makkelijk te delen bestand op schijf komt te staan
+  -- in plaats van een keer wav, een andere keer iets anders.
   """
   mime_type = (mime_type or "").lower()
   map_pad = verhaal_map(verhaal_id)
 
-  if "wav" in mime_type:
-    bestand, uiteindelijke_mime = "liedje_gezongen.wav", "audio/wav"
-  elif "mpeg" in mime_type or "mp3" in mime_type:
-    bestand, uiteindelijke_mime = "liedje_gezongen.mp3", "audio/mpeg"
+  if "mpeg" in mime_type or "mp3" in mime_type:
+    mp3 = data
+  elif "wav" in mime_type:
+    with wave.open(io.BytesIO(data), "rb") as w:
+      pcm = w.readframes(w.getnframes())
+      mp3 = _pcm_naar_mp3(pcm, w.getframerate(), w.getnchannels())
   elif "ogg" in mime_type:
-    bestand, uiteindelijke_mime = "liedje_gezongen.ogg", "audio/ogg"
+    # Nooit waargenomen in de praktijk, en zonder ogg-decoder niet zelf om
+    # te zetten naar mp3 -- bewaar in dat zeldzame geval zoals het is.
+    (map_pad / "liedje_gezongen.ogg").write_bytes(data)
+    return "liedje_gezongen.ogg", "audio/ogg"
   else:
     samplerate_match = re.search(r"rate=(\d+)", mime_type)
     samplerate = int(samplerate_match.group(1)) if samplerate_match else 24000
-    data = _wav_header(len(data), samplerate) + data
-    bestand, uiteindelijke_mime = "liedje_gezongen.wav", "audio/wav"
+    mp3 = _pcm_naar_mp3(data, samplerate)
 
-  (map_pad / bestand).write_bytes(data)
-  return bestand, uiteindelijke_mime
+  (map_pad / "liedje_gezongen.mp3").write_bytes(mp3)
+  return "liedje_gezongen.mp3", "audio/mpeg"
 
 
 def genereer_gezongen_liedje(liedje: dict, verhaal_id: str) -> dict:
@@ -352,15 +360,34 @@ def genereer_gezongen_liedje(liedje: dict, verhaal_id: str) -> dict:
   )
 
 
-def gezongen_liedje_voor(verhaal_id: str, vernieuw: bool = False) -> dict | None:
+def gezongen_liedje_voor(
+    verhaal_id: str,
+    vernieuw: bool = False,
+    stijl: str | None = None,
+    tekst: str | None = None,
+) -> dict | None:
   """Haalt de bewaarde gezongen versie op, of laat Lyria er een maken.
 
   Geeft None als het verhaal of de songtekst (nog) niet bestaat -- zing
-  kan pas nadat er een liedje is geschreven.
+  kan pas nadat er een liedje is geschreven. `stijl`/`tekst` zijn optionele
+  bijgewerkte versies (bv. handmatig aangepast in de app); zijn die
+  meegegeven, dan worden ze eerst bewaard en wordt er altijd opnieuw
+  gezongen -- een bewuste aanpassing negeren zou verwarrend zijn.
   """
   verhaal = lees_verhaal(verhaal_id)
   if not verhaal or not verhaal.get("liedje"):
     return None
+
+  aangepast = False
+  if stijl is not None and stijl.strip() and stijl.strip() != verhaal["liedje"].get("stijl"):
+    verhaal["liedje"]["stijl"] = stijl.strip()
+    aangepast = True
+  if tekst is not None and tekst.strip() and tekst.strip() != verhaal["liedje"].get("tekst"):
+    verhaal["liedje"]["tekst"] = tekst.strip()
+    aangepast = True
+  if aangepast:
+    _bewaar(verhaal)
+    vernieuw = True
 
   bestaand = verhaal["liedje"].get("gezongen")
   if bestaand and not vernieuw:

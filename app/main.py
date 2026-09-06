@@ -145,17 +145,24 @@ def _draai_liedje_taak(taak_id: str, verhaal_id: str, vernieuw: bool) -> None:
     _ruim_liedje_taken_op()
 
 
-def _draai_gezongen_taak(taak_id: str, verhaal_id: str, vernieuw: bool) -> None:
+def _draai_gezongen_taak(
+    taak_id: str,
+    verhaal_id: str,
+    vernieuw: bool,
+    stijl: str | None = None,
+    tekst: str | None = None,
+) -> None:
   """Experimenteel: probeert het liedje via Lyria te laten zingen.
 
   Deelt dezelfde taakregistratie als het schrijven van de songtekst -- het
   is dezelfde soort achtergrondwerk (een trage, onzekere Gemini-aanroep),
   en dat houdt ook meteen maar één Google-aanroep tegelijk vanuit dit deel
-  van de app.
+  van de app. `stijl`/`tekst`: optionele, handmatig aangepaste versie uit
+  de app; die worden dan eerst bewaard en er wordt altijd opnieuw gezongen.
   """
   _zet_liedje_taak(taak_id, status="bezig")
   try:
-    gezongen = story.gezongen_liedje_voor(verhaal_id, vernieuw)
+    gezongen = story.gezongen_liedje_voor(verhaal_id, vernieuw, stijl, tekst)
     if gezongen is None:
       _zet_liedje_taak(
           taak_id, status="mislukt",
@@ -397,6 +404,11 @@ async def liedje_zingen(verhaal_id: str, gegevens: dict = Body(default={})):
   songtekst gewoon bruikbaar om zelf in Suno te plakken.
   """
   vernieuw = bool(gegevens.get("vernieuw"))
+  stijl = gegevens.get("stijl")
+  tekst = gegevens.get("tekst")
+  # Aangepaste tekst of stijl meesturen is zelf al een verzoek om opnieuw te
+  # zingen -- de bewaarde versie teruggeven zou de aanpassing negeren.
+  heeft_aanpassing = bool(str(stijl or "").strip() or str(tekst or "").strip())
   try:
     verhaal = story.lees_verhaal(verhaal_id)
   except story.OngeldigVerhaalId:
@@ -408,7 +420,7 @@ async def liedje_zingen(verhaal_id: str, gegevens: dict = Body(default={})):
         status_code=400, detail="Maak eerst de songtekst, voor je 'm laat zingen."
     )
   bestaand = verhaal["liedje"].get("gezongen")
-  if bestaand and not vernieuw:
+  if bestaand and not vernieuw and not heeft_aanpassing:
     return {"status": "klaar", "gezongen": bestaand}
 
   taak_id = secrets.token_hex(8)
@@ -417,7 +429,9 @@ async def liedje_zingen(verhaal_id: str, gegevens: dict = Body(default={})):
       status="wachtrij",
       gestart=datetime.now(timezone.utc).isoformat(timespec="seconds"),
   )
-  _liedje_werker.submit(_draai_gezongen_taak, taak_id, verhaal_id, vernieuw)
+  _liedje_werker.submit(
+      _draai_gezongen_taak, taak_id, verhaal_id, vernieuw, stijl, tekst
+  )
   return {"status": "bezig", "taak_id": taak_id}
 
 

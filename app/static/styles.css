@@ -101,6 +101,7 @@ button { border: none; background: none; cursor: pointer; }
   background: var(--nacht-4);
   color: var(--inkt);
   font-weight: 700;
+  text-decoration: none;
   border: 1px solid var(--rand);
   transition: transform var(--overgang), background var(--overgang),
     opacity var(--overgang);
