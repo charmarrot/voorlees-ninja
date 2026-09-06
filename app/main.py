@@ -37,6 +37,7 @@ async def levensloop(_: FastAPI):
   )
   yield
   _werker.shutdown(wait=False)
+  _liedje_werker.shutdown(wait=False)
 
 
 app = FastAPI(
@@ -52,6 +53,14 @@ templates = Jinja2Templates(directory=str(config.TEMPLATES_DIR))
 _werker = ThreadPoolExecutor(max_workers=1, thread_name_prefix="verhaal")
 _taken: dict[str, dict] = {}
 _taken_lock = threading.Lock()
+
+# Los werkje voor liedjes: net als bij een verhaal mag de HTTP-aanroep niet
+# blijven hangen tot Gemini klaar is. Met alle retries kan dat makkelijk
+# langer duren dan Cloudflare of Traefik tussen de tablet en deze app
+# toestaan, en dat gaf een kale 502 in plaats van een nette foutmelding.
+_liedje_werker = ThreadPoolExecutor(max_workers=1, thread_name_prefix="liedje")
+_liedje_taken: dict[str, dict] = {}
+_liedje_taken_lock = threading.Lock()
 
 
 def _zet_taak(taak_id: str, **velden) -> None:
@@ -96,6 +105,44 @@ def _draai_taak(taak_id: str, idee: str, aantal_scenes: int) -> None:
     )
   finally:
     _ruim_taken_op()
+
+
+def _zet_liedje_taak(taak_id: str, **velden) -> None:
+  with _liedje_taken_lock:
+    taak = _liedje_taken.setdefault(taak_id, {"id": taak_id})
+    taak.update(velden)
+
+
+def _lees_liedje_taak(taak_id: str) -> dict | None:
+  with _liedje_taken_lock:
+    taak = _liedje_taken.get(taak_id)
+    return dict(taak) if taak else None
+
+
+def _ruim_liedje_taken_op() -> None:
+  with _liedje_taken_lock:
+    if len(_liedje_taken) <= 40:
+      return
+    op_volgorde = sorted(_liedje_taken.values(), key=lambda t: t.get("gestart", ""))
+    for taak in op_volgorde[:-20]:
+      _liedje_taken.pop(taak["id"], None)
+
+
+def _draai_liedje_taak(taak_id: str, verhaal_id: str, vernieuw: bool) -> None:
+  _zet_liedje_taak(taak_id, status="bezig")
+  try:
+    liedje = story.liedje_voor(verhaal_id, vernieuw)
+    if liedje is None:
+      _zet_liedje_taak(taak_id, status="mislukt", fout="Verhaaltje niet gevonden")
+    else:
+      _zet_liedje_taak(taak_id, status="klaar", liedje=liedje)
+  except story.OngeldigVerhaalId:
+    _zet_liedje_taak(taak_id, status="mislukt", fout="Ongeldig verhaal-id")
+  except Exception as exc:  # noqa: BLE001
+    log.exception("Liedje schrijven mislukt")
+    _zet_liedje_taak(taak_id, status="mislukt", fout=_leesbare_fout(exc))
+  finally:
+    _ruim_liedje_taken_op()
 
 
 def _leesbare_fout(exc: Exception) -> str:
@@ -283,17 +330,40 @@ async def favoriet(verhaal_id: str, gegevens: dict = Body(default={})):
     dependencies=[Depends(auth.vereis_toegang)],
 )
 async def liedje(verhaal_id: str, gegevens: dict = Body(default={})):
-  """Schrijft (of herschrijft) een slaapliedje bij een verhaal."""
+  """Start het schrijven van een slaapliedje op de achtergrond.
+
+  Net als bij het verhaal zelf: de Gemini-aanroep (met retries) kan langer
+  duren dan een tussenliggende proxy toestaat, dus deze route houdt de
+  HTTP-verbinding niet open tot het liedje klaar is. Is er al een bewaard
+  liedje, dan kost dat geen Gemini-aanroep en antwoordt de route meteen.
+  """
   vernieuw = bool(gegevens.get("vernieuw"))
   try:
-    gevonden = await asyncio.to_thread(story.liedje_voor, verhaal_id, vernieuw)
+    verhaal = story.lees_verhaal(verhaal_id)
   except story.OngeldigVerhaalId:
     raise HTTPException(status_code=400, detail="Ongeldig verhaal-id")
-  except Exception as exc:  # noqa: BLE001
-    log.exception("Liedje schrijven mislukt")
-    raise HTTPException(status_code=502, detail=_leesbare_fout(exc))
-  if not gevonden:
+  if not verhaal:
     raise HTTPException(status_code=404, detail="Verhaaltje niet gevonden")
+  if verhaal.get("liedje") and not vernieuw:
+    return {"status": "klaar", "liedje": verhaal["liedje"]}
+
+  taak_id = secrets.token_hex(8)
+  _zet_liedje_taak(
+      taak_id,
+      status="wachtrij",
+      gestart=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+  )
+  _liedje_werker.submit(_draai_liedje_taak, taak_id, verhaal_id, vernieuw)
+  return {"status": "bezig", "taak_id": taak_id}
+
+
+@app.get(
+    "/api/liedje-taken/{taak_id}", dependencies=[Depends(auth.vereis_toegang)]
+)
+async def liedje_taak(taak_id: str):
+  gevonden = _lees_liedje_taak(taak_id)
+  if not gevonden:
+    raise HTTPException(status_code=404, detail="Taak niet gevonden")
   return gevonden
 
 

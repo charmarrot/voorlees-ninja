@@ -590,17 +590,49 @@
     toon('liedje-bezig');
     verberg('liedje-inhoud');
     try {
-      const liedje = await api(`/api/verhalen/${verhaal.id}/liedje`, {
+      const start = await api(`/api/verhalen/${verhaal.id}/liedje`, {
         method: 'POST', body: JSON.stringify({ vernieuw }),
       });
-      verhaal.liedje = liedje;
-      vulLiedje(liedje);
+      if (start.status === 'klaar') {
+        verhaal.liedje = start.liedje;
+        vulLiedje(start.liedje);
+        return;
+      }
+      await volgLiedjeTaak(start.taak_id, verhaal);
     } catch (fout) {
       verberg('paneel-liedje');
       meld(fout.message, 'fout');
-    } finally {
-      verberg('liedje-bezig');
     }
+  }
+
+  /* Net als bij het verhaal zelf: het liedje wordt op de achtergrond
+     geschreven, dus we pollen tot de taak klaar of mislukt is. Zo blijft de
+     HTTP-verbinding nooit lang genoeg open om op een proxy-timeout (502) te
+     stuiten. */
+  function volgLiedjeTaak(taakId, verhaal) {
+    return new Promise((resolve) => {
+      const interval = setInterval(async () => {
+        try {
+          const taak = await api(`/api/liedje-taken/${taakId}`);
+          if (taak.status === 'klaar') {
+            clearInterval(interval);
+            verhaal.liedje = taak.liedje;
+            vulLiedje(taak.liedje);
+            resolve();
+          } else if (taak.status === 'mislukt') {
+            clearInterval(interval);
+            verberg('paneel-liedje');
+            meld(taak.fout || 'Het liedje maken is mislukt.', 'fout');
+            resolve();
+          }
+        } catch (fout) {
+          clearInterval(interval);
+          verberg('paneel-liedje');
+          meld(fout.message, 'fout');
+          resolve();
+        }
+      }, 1500);
+    });
   }
 
   function vulLiedje(liedje) {
