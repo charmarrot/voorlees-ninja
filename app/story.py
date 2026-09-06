@@ -18,6 +18,15 @@ log = logging.getLogger("voorlees.story")
 
 Voortgang = Callable[[str, int], None]
 
+
+class OngeldigVerhaalId(Exception):
+  """Het verhaal-id voldoet niet aan het verwachte formaat.
+
+  Bewust geen ValueError: json.JSONDecodeError (bv. bij het parsen van een
+  liedje- of verhaalantwoord) IS een ValueError, en die mag nooit worden
+  aangezien voor een ongeldig id.
+  """
+
 STIJL = (
     "children's picture book illustration, friendly 3D cartoon style,"
     " soft warm lighting, vibrant but gentle colours, clean rounded shapes,"
@@ -114,16 +123,23 @@ Geef UITSLUITEND een geldig JSON-object terug, zonder uitleg eromheen:
 
 
 def _parse_json(tekst: str) -> dict:
+  """Parseert JSON uit een modelantwoord.
+
+  Bij een liedje of lang verhaal geeft het model regelmatig letterlijke
+  regeleinden terug in een stringwaarde in plaats van het escape-teken "\\n".
+  Standaard-JSON verbiedt dat (Invalid control character); strict=False
+  accepteert het gewoon, en dat is precies wat we hier willen.
+  """
   tekst = (tekst or "").strip()
   if tekst.startswith("```"):
     tekst = re.sub(r"^```[a-zA-Z]*\s*", "", tekst)
     tekst = re.sub(r"\s*```$", "", tekst)
   try:
-    return json.loads(tekst)
+    return json.loads(tekst, strict=False)
   except json.JSONDecodeError:
     start, eind = tekst.find("{"), tekst.rfind("}")
     if start != -1 and eind > start:
-      return json.loads(tekst[start : eind + 1])
+      return json.loads(tekst[start : eind + 1], strict=False)
     raise
 
 
@@ -523,10 +539,10 @@ def _nieuw_id() -> str:
 
 def verhaal_map(verhaal_id: str) -> Path:
   if not re.fullmatch(r"[0-9a-zA-Z._-]{3,64}", verhaal_id or ""):
-    raise ValueError("Ongeldig verhaal-id")
+    raise OngeldigVerhaalId(verhaal_id)
   map_pad = (config.STORIES_DIR / verhaal_id).resolve()
   if config.STORIES_DIR.resolve() not in map_pad.parents:
-    raise ValueError("Ongeldig verhaal-id")
+    raise OngeldigVerhaalId(verhaal_id)
   return map_pad
 
 
