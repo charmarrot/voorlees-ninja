@@ -3,9 +3,16 @@
   "project": "Voorlees Ninja",
   "domein": "voorlees.ninjageit.nl",
   "omschrijving": "Webapp die met Gemini en Cloud Text-to-Speech elke avond een nieuw bedtijdverhaaltje schrijft, tekent en voorleest.",
-  "bijgewerkt": "2026-09-06T22:13:02+00:00",
-  "aantal": 9,
+  "bijgewerkt": "2026-09-06T22:54:45+00:00",
+  "aantal": 10,
   "entries": [
+    {
+      "datum": "2026-09-06",
+      "titel": "Bewerkbare songtekst/stijl en een echte mp3-downloadknop",
+      "commit": "093566a",
+      "bestanden": 9,
+      "regels": 187
+    },
     {
       "datum": "2026-09-06",
       "titel": "Fix: Lyria op een eigen locatie (global) i.p.v. us-central1",
